@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import { autoTable } from "jspdf-autotable";
 import { COLORS } from "../constants/theme";
 import { WORKSHOP } from "../constants/workshop";
-import { formatDate, formatDateTime, formatMoney } from "../utils/formatters";
+import { formatBudgetNumber, formatDate, formatDateTime, formatMoney } from "../utils/formatters";
 import { Budget, getBudgetTotal } from "./budgetService";
 
 const PAGE_MARGIN = 14;
@@ -16,7 +16,7 @@ const money = (value: number) => clean(formatMoney(value));
 export const getBudgetFileName = (budget: Budget): string => {
     const plate = budget.vehicle.licensePlate.replace(/[^A-Z0-9]/gi, "");
     const day = formatDate(budget.date).split("/").reverse().join("-");
-    return `Orcamento_${plate}_${day}.pdf`;
+    return `Orcamento_${formatBudgetNumber(budget.number)}_${plate}_${day}.pdf`;
 };
 
 const drawHeader = (doc: jsPDF) => {
@@ -84,7 +84,7 @@ export const buildBudgetPdf = (budget: Budget): jsPDF => {
     let y = CONTENT_TOP;
 
     doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(COLORS.orange);
-    doc.text("ORÇAMENTO", PAGE_MARGIN, y);
+    doc.text(`ORÇAMENTO Nº ${formatBudgetNumber(budget.number)}`, PAGE_MARGIN, y);
     doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(COLORS.gray);
     doc.text(`Data: ${formatDate(budget.date)}`, width - PAGE_MARGIN, y, { align: "right" });
     y += 9;

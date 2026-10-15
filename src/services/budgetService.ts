@@ -20,6 +20,8 @@ export interface Service {
 
 export interface Budget {
     id: string;
+    /** Número sequencial do orçamento na oficina (Nº 0001, 0002...). */
+    number: number;
     createdAt: string;
     updatedAt?: string;
     client: Client;
@@ -29,5 +31,15 @@ export interface Budget {
     expiresAt: string | null;
 }
 
-export const getBudgetTotal = (budget: Budget): number =>
+/**
+ * Dados enviados para salvar. Sem `id` cria um orçamento novo; com `id` atualiza.
+ * Número e datas de criação/edição são definidos pelo banco.
+ */
+export type BudgetDraft = Omit<Budget, "id" | "number" | "createdAt" | "updatedAt"> & {
+    id?: string;
+    /** Só usado ao importar orçamentos antigos, para manter a data original. */
+    createdAt?: string;
+};
+
+export const getBudgetTotal = (budget: Pick<Budget, "services">): number =>
     budget.services.reduce((sum, s) => sum + s.quantity * s.price, 0);

@@ -1,13 +1,29 @@
 import { act, renderHook } from "@testing-library/react";
-import type { Budget } from "../../services/budgetService";
-import { listBudgets } from "../../services/budgetStorage";
+import type { Budget, BudgetDraft } from "../../services/budgetService";
+import { saveBudget } from "../../services/budgetStorage";
 import { makeBudget } from "../../test-utils/budgetFactory";
 import { useBudgetForm } from "../useBudgetForm";
+
+// O Supabase é simulado: o "banco" devolve o que recebeu, com id e número.
+jest.mock("../../services/budgetStorage", () => ({ saveBudget: jest.fn() }));
+const mockedSave = jest.mocked(saveBudget);
 
 const plain = (text: string) => text.replace(/\s/g, " ");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+    mockedSave.mockReset();
+    mockedSave.mockImplementation(async (draft: BudgetDraft): Promise<Budget> => ({
+        ...draft,
+        id: draft.id ?? "novo-id",
+        number: 1,
+        createdAt: "2026-10-14T12:00:00.000Z",
+        updatedAt: draft.id ? "2026-10-15T12:00:00.000Z" : undefined,
+    }));
+});
+
+/** Último orçamento enviado para salvar. */
+const lastDraft = () => mockedSave.mock.calls.at(-1)![0];
 
 /** Preenche um formulário novo com dados válidos. */
 const fillValidForm = (form: ReturnType<typeof useBudgetForm>) => {
@@ -91,7 +107,7 @@ describe("useBudgetForm — novo orçamento", () => {
         expect(saved).toBeNull();
         expect(result.current.showMissingDialog).toBe(true);
         expect(result.current.errorFor("name")).toBe("Preencha este campo");
-        expect(await listBudgets()).toEqual([]);
+        expect(mockedSave).not.toHaveBeenCalled();
     });
 
     it("o erro some assim que o campo é corrigido", async () => {
@@ -103,18 +119,30 @@ describe("useBudgetForm — novo orçamento", () => {
         expect(result.current.errorFor("name")).toBeUndefined();
     });
 
-    it("salva no histórico com números e datas corretos", async () => {
+    it("envia um orçamento novo (sem id) com números e datas corretos", async () => {
         const { result } = renderHook(() => useBudgetForm());
         fillValidForm(result.current);
 
         const saved = await submit(result.current);
 
-        expect(saved).not.toBeNull();
-        expect(saved!.vehicle).toMatchObject({ licensePlate: "ABC1D23", year: 2010 });
-        expect(saved!.services).toEqual([{ description: "Troca de óleo", quantity: 1, price: 180 }]);
-        expect(new Date(saved!.expiresAt!).getTime() - new Date(saved!.date).getTime()).toBe(15 * DAY_MS);
-        expect(saved!.updatedAt).toBeUndefined();
-        expect(await listBudgets()).toEqual([saved]);
+        const draft = lastDraft();
+        expect(draft.id).toBeUndefined();
+        expect(draft.vehicle).toMatchObject({ licensePlate: "ABC1D23", year: 2010 });
+        expect(draft.services).toEqual([{ description: "Troca de óleo", quantity: 1, price: 180 }]);
+        expect(new Date(draft.expiresAt!).getTime() - new Date(draft.date).getTime()).toBe(15 * DAY_MS);
+        expect(saved).toMatchObject({ id: "novo-id", number: 1 });
+    });
+
+    it("mostra uma mensagem amigável quando o salvamento falha", async () => {
+        mockedSave.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+        const { result } = renderHook(() => useBudgetForm());
+        fillValidForm(result.current);
+
+        const saved = await submit(result.current);
+
+        expect(saved).toBeNull();
+        expect(result.current.saveError).toBe("Sem conexão com a internet. Verifique e tente de novo.");
+        expect(result.current.isSaving).toBe(false);
     });
 
     it("salva sem validade quando 'Sem validade' é escolhido", async () => {
@@ -122,9 +150,9 @@ describe("useBudgetForm — novo orçamento", () => {
         fillValidForm(result.current);
         act(() => result.current.setValidityDays(null));
 
-        const saved = await submit(result.current);
+        await submit(result.current);
 
-        expect(saved!.expiresAt).toBeNull();
+        expect(lastDraft().expiresAt).toBeNull();
     });
 
     it("limpa o formulário para um novo orçamento", () => {
@@ -162,15 +190,17 @@ describe("useBudgetForm — editando um orçamento", () => {
         expect(result.current.licensePlate).toBe("ABC1D23");
     });
 
-    it("mantém id e data de criação e registra a data de edição", async () => {
+    it("envia o id do orçamento para atualizar (número e criação ficam com o banco)", async () => {
         const { result } = renderHook(() => useBudgetForm(existing));
         act(() => result.current.setName("Nome Editado"));
 
-        const saved = await submit(result.current);
+        await submit(result.current);
 
-        expect(saved).toMatchObject({ id: existing.id, createdAt: existing.createdAt });
-        expect(saved!.client.name).toBe("Nome Editado");
-        expect(saved!.updatedAt).toEqual(expect.any(String));
-        expect(saved!.services).toEqual(existing.services);
+        const draft = lastDraft();
+        expect(draft.id).toBe(existing.id);
+        expect(draft.client.name).toBe("Nome Editado");
+        expect(draft.services).toEqual(existing.services);
+        expect(draft).not.toHaveProperty("number");
+        expect(draft).not.toHaveProperty("createdAt");
     });
 });

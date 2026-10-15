@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import BudgetActions from "../../src/components/BudgetActions";
 import BudgetFormView from "../../src/components/BudgetFormView";
@@ -11,7 +11,8 @@ import { COLORS, RADIUS } from "../../src/constants/theme";
 import { useBudgetForm } from "../../src/hooks/useBudgetForm";
 import { Budget, getBudgetTotal } from "../../src/services/budgetService";
 import { deleteBudget, getBudget } from "../../src/services/budgetStorage";
-import { formatDate, formatMoney } from "../../src/utils/formatters";
+import { friendlyError } from "../../src/utils/errors";
+import { formatBudgetNumber, formatDate, formatMoney } from "../../src/utils/formatters";
 
 export default function BudgetScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,19 +21,39 @@ export default function BudgetScreen() {
   const [budget, setBudget] = useState<Budget | null | undefined>(undefined);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getBudget(id).then(setBudget).catch(() => setBudget(null));
+  const load = useCallback(() => {
+    setLoadError(null);
+    setBudget(undefined);
+    getBudget(id)
+      .then(setBudget)
+      .catch((e) => {
+        setLoadError(friendlyError(e, "Não foi possível carregar o orçamento."));
+        setBudget(null);
+      });
   }, [id]);
+
+  useEffect(load, [load]);
 
   // Abrindo o link direto (ex.: recarregando a página) não há tela anterior: volta para o histórico.
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/history"));
   const headerLeft = router.canGoBack() ? undefined : () => <HeaderButton icon="arrow-back" onPress={goBack} />;
 
   const remove = async () => {
-    await deleteBudget(id);
-    setConfirmDelete(false);
-    goBack();
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteBudget(id);
+      setConfirmDelete(false);
+      goBack();
+    } catch (e) {
+      setDeleteError(friendlyError(e, "Não foi possível excluir. Tente novamente."));
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (budget === undefined) {
@@ -47,9 +68,11 @@ export default function BudgetScreen() {
     return (
       <View style={styles.center}>
         <Stack.Screen options={{ title: "Orçamento", headerLeft }} />
-        <Ionicons name="document-text-outline" size={48} color={COLORS.gray} />
-        <Text style={styles.notFound}>Orçamento não encontrado</Text>
-        <Button title="Ir para o histórico" onPress={() => router.replace("/history")} />
+        <Ionicons name={loadError ? "cloud-offline-outline" : "document-text-outline"} size={48} color={COLORS.gray} />
+        <Text style={styles.notFound}>{loadError ? "Não foi possível carregar" : "Orçamento não encontrado"}</Text>
+        {loadError && <Text style={styles.notFoundText}>{loadError}</Text>}
+        {loadError && <Button title="Tentar de novo" icon="refresh" onPress={load} />}
+        <Button title="Ir para o histórico" variant={loadError ? "ghost" : "primary"} onPress={() => router.replace("/history")} />
       </View>
     );
   }
@@ -78,9 +101,10 @@ export default function BudgetScreen() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ title: "Orçamento", headerLeft }} />
+      <Stack.Screen options={{ title: `Orçamento Nº ${formatBudgetNumber(budget.number)}`, headerLeft }} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.summary}>
+          <Text style={styles.summaryNumber}>ORÇAMENTO Nº {formatBudgetNumber(budget.number)}</Text>
           <Text style={styles.summaryClient}>{client.name}</Text>
           <View style={styles.summaryVehicle}>
             <Text style={styles.summaryVehicleText}>{vehicle.brand} {vehicle.model}</Text>
@@ -140,10 +164,10 @@ export default function BudgetScreen() {
         icon="trash"
         iconColor={COLORS.danger}
         title="Excluir orçamento?"
-        message={`O orçamento de ${client.name} (${vehicle.licensePlate}) será apagado do histórico.`}
+        message={deleteError ?? `O orçamento Nº ${formatBudgetNumber(budget.number)} de ${client.name} (${vehicle.licensePlate}) será apagado para todos.`}
         onClose={() => setConfirmDelete(false)}
       >
-        <Button title="Excluir" icon="trash" variant="danger" onPress={remove} />
+        <Button title="Excluir" icon="trash" variant="danger" loading={deleting} onPress={remove} />
         <Button title="Cancelar" variant="ghost" onPress={() => setConfirmDelete(false)} />
       </AppDialog>
     </View>
@@ -184,6 +208,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.light },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24, backgroundColor: COLORS.light },
   notFound: { fontSize: 18, fontWeight: "800", color: COLORS.ink },
+  notFoundText: { fontSize: 15, color: COLORS.gray, textAlign: "center" },
+  summaryNumber: { color: COLORS.orange, fontSize: 13, fontWeight: "800", letterSpacing: 0.8, marginBottom: 4 },
   content: { padding: 16, paddingBottom: 24, width: "100%", maxWidth: 720, alignSelf: "center" },
 
   summary: { backgroundColor: COLORS.ink, borderRadius: RADIUS.lg, padding: 18, marginBottom: 12 },

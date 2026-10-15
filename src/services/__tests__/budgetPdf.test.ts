@@ -9,19 +9,20 @@ const manyServices = (count: number): Service[] =>
     Array.from({ length: count }, (_, i) => ({ description: `Servico ${i + 1}`, quantity: 1, price: 100 }));
 
 describe("getBudgetFileName", () => {
-    it("usa a placa sem hífen e a data do orçamento", () => {
-        expect(getBudgetFileName(makeBudget())).toBe("Orcamento_ABC1234_2026-10-14.pdf");
+    it("usa o número, a placa sem hífen e a data do orçamento", () => {
+        expect(getBudgetFileName(makeBudget())).toBe("Orcamento_0007_ABC1234_2026-10-14.pdf");
     });
 
     it("usa a data local (um orçamento feito à noite não vira o dia seguinte)", () => {
         const budget = makeBudget({ date: new Date(2026, 9, 14, 23, 30).toISOString() });
-        expect(getBudgetFileName(budget)).toBe("Orcamento_ABC1234_2026-10-14.pdf");
+        expect(getBudgetFileName(budget)).toBe("Orcamento_0007_ABC1234_2026-10-14.pdf");
     });
 });
 
 describe("buildBudgetPdf", () => {
-    it("inclui os dados do cliente, do veículo e dos itens", () => {
+    it("inclui o número, os dados do cliente, do veículo e dos itens", () => {
         const text = pdfText();
+        expect(text).toContain("ORÇAMENTO Nº 0007");
         expect(text).toContain("Cliente Teste");
         expect(text).toContain("ABC-1234");
         expect(text).toContain("Troca de oleo e filtro");

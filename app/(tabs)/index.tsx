@@ -6,7 +6,7 @@ import AppDialog from "../../src/components/ui/AppDialog";
 import Button from "../../src/components/ui/Button";
 import { useBudgetForm } from "../../src/hooks/useBudgetForm";
 import { Budget, getBudgetTotal } from "../../src/services/budgetService";
-import { formatMoney } from "../../src/utils/formatters";
+import { formatBudgetNumber, formatMoney } from "../../src/utils/formatters";
 
 export default function HomeScreen() {
   const form = useBudgetForm();
@@ -35,7 +35,7 @@ export default function HomeScreen() {
       <AppDialog
         visible={!!generated}
         icon="checkmark-circle"
-        title="Orçamento pronto!"
+        title={generated ? `Orçamento Nº ${formatBudgetNumber(generated.number)} pronto!` : ""}
         message={generated ? `${generated.client.name} · ${generated.vehicle.model} ${generated.vehicle.licensePlate}\nTotal: ${formatMoney(getBudgetTotal(generated))}\nSalvo no histórico.` : ""}
         onClose={() => setGenerated(null)}
       >

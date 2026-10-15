@@ -14,6 +14,9 @@ export const parseCurrency = (value: string): number =>
 export const parseQuantity = (value: string): number =>
     parseFloat(value.replace(',', '.')) || 0;
 
+/** Número do orçamento com 4 dígitos: 7 → "0007" */
+export const formatBudgetNumber = (value: number): string => String(value).padStart(4, '0');
+
 export const formatMoney = (value: number): string =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 

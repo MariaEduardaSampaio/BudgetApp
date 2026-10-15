@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Budget } from "../services/budgetService";
+import { Budget, BudgetDraft } from "../services/budgetService";
 import { saveBudget } from "../services/budgetStorage";
 import { formatCurrency, formatMoney, formatPhone, formatPlate, parseCurrency, parseQuantity } from "../utils/formatters";
+import { friendlyError } from "../utils/errors";
 import { getMissingFields } from "../utils/validators";
 
 type ServiceField = "description" | "quantity" | "price";
@@ -27,7 +28,7 @@ const toValidityDays = (budget?: Budget): number | null => {
 
 /**
  * Estado do formulário de orçamento.
- * Sem `initial`, cria um orçamento novo; com `initial`, edita aquele orçamento (mantendo id e data de criação).
+ * Sem `initial`, cria um orçamento novo; com `initial`, edita aquele orçamento (o banco mantém número e data de criação).
  */
 export const useBudgetForm = (initial?: Budget) => {
   const [name, setName] = useState(initial?.client.name ?? "");
@@ -80,13 +81,10 @@ export const useBudgetForm = (initial?: Budget) => {
     setSubmitted(false);
   };
 
-  const buildBudget = (): Budget => {
+  const buildDraft = (): BudgetDraft => {
     const expiresAt = validityDays === null ? null : new Date(date.getTime() + validityDays * DAY_MS);
-    const now = new Date().toISOString();
     return {
-      id: initial?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: initial?.createdAt ?? now,
-      updatedAt: initial ? now : undefined,
+      id: initial?.id,
       client: { name: name.trim(), phone, address: address.trim() },
       vehicle: { brand: brand.trim(), model: model.trim(), licensePlate, color: color.trim(), year: parseInt(year, 10) },
       services: services.map((s) => ({
@@ -99,7 +97,7 @@ export const useBudgetForm = (initial?: Budget) => {
     };
   };
 
-  /** Valida e salva no histórico. Devolve o orçamento salvo, ou null se faltar algo / der erro. */
+  /** Valida e salva no Supabase. Devolve o orçamento salvo (já numerado), ou null se faltar algo / der erro. */
   const submit = async (): Promise<Budget | null> => {
     setSubmitted(true);
     if (missingFields.length > 0) {
@@ -109,11 +107,9 @@ export const useBudgetForm = (initial?: Budget) => {
 
     setIsSaving(true);
     try {
-      const budget = buildBudget();
-      await saveBudget(budget);
-      return budget;
-    } catch (error: any) {
-      setSaveError(error?.message ?? "Não foi possível salvar o orçamento.");
+      return await saveBudget(buildDraft());
+    } catch (error) {
+      setSaveError(friendlyError(error, "Não foi possível salvar o orçamento. Tente novamente."));
       return null;
     } finally {
       setIsSaving(false);
