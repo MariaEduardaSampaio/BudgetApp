@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { COLORS } from "../constants/theme";
 import type { BudgetForm } from "../hooks/useBudgetForm";
 import { formatMoney } from "../utils/formatters";
@@ -26,7 +26,7 @@ export default function BudgetFormView({ form, submitLabel, submitIcon, onSubmit
   const stacked = useWindowDimensions().width < 440;
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={90}>
+    <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {header}
         <ClientForm
@@ -76,7 +76,7 @@ export default function BudgetFormView({ form, submitLabel, submitIcon, onSubmit
       >
         <Button title="Fechar" onPress={form.clearSaveError} />
       </AppDialog>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

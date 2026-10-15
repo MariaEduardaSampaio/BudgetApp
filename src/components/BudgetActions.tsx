@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS } from "../constants/theme";
-import { CAN_DOWNLOAD, downloadBudgetPdf, FileResult, shareBudgetPdf, viewBudgetPdf } from "../services/budgetFile";
+import { downloadBudgetPdf, FileResult, shareBudgetPdf, viewBudgetPdf } from "../services/budgetFile";
 import type { Budget } from "../services/budgetService";
 
 type Action = "view" | "download" | "share";
 
 const ACTIONS: { key: Action; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
     { key: "view", label: "Visualizar", icon: "eye-outline" },
-    ...(CAN_DOWNLOAD ? [{ key: "download" as const, label: "Baixar", icon: "download-outline" as const }] : []),
+    { key: "download", label: "Baixar", icon: "download-outline" },
     { key: "share", label: "Compartilhar", icon: "share-social-outline" },
 ];
 
@@ -19,7 +19,7 @@ const FALLBACK_NOTICE: Record<Action, string> = {
     share: "Este navegador não permite compartilhar arquivos, então o PDF foi baixado. Você pode anexá-lo no WhatsApp ou e-mail.",
 };
 
-/** Botões lado a lado para o PDF de um orçamento: Visualizar, Baixar (web) e Compartilhar. */
+/** Botões lado a lado para o PDF de um orçamento: Visualizar, Baixar e Compartilhar. */
 export default function BudgetActions({ budget }: { budget: Budget }) {
     const [busy, setBusy] = useState<Action | null>(null);
     const [notice, setNotice] = useState<string | null>(null);

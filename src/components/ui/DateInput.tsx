@@ -1,59 +1,37 @@
-import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
-import { Platform, Pressable, StyleSheet, Text } from "react-native";
+import { createElement } from "react";
 import { COLORS, RADIUS } from "../../constants/theme";
-import { formatDate } from "../../utils/formatters";
 
 interface Props {
     value: Date;
     onChange: (date: Date) => void;
 }
 
+const toInputValue = (date: Date) => {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+/** No navegador usa o <input type="date"> nativo, que já abre um calendário. */
 export default function DateInput({ value, onChange }: Props) {
-    if (Platform.OS === "ios") {
-        return (
-            <DateTimePicker
-                value={value}
-                mode="date"
-                display="compact"
-                locale="pt-BR"
-                accentColor={COLORS.orange}
-                style={styles.iosPicker}
-                onChange={(_, selected) => selected && onChange(selected)}
-            />
-        );
-    }
-
-    const openPicker = () => {
-        DateTimePickerAndroid.open({
-            value,
-            mode: "date",
-            onChange: (event, selected) => {
-                if (event.type === "set" && selected) onChange(selected);
-            },
-        });
-    };
-
-    return (
-        <Pressable style={styles.input} onPress={openPicker}>
-            <Text style={styles.text}>{formatDate(value)}</Text>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.orange} />
-        </Pressable>
-    );
+    return createElement("input", {
+        type: "date",
+        value: toInputValue(value),
+        onChange: (event: { target: { value: string } }) => {
+            if (!event.target.value) return;
+            const [year, month, day] = event.target.value.split("-").map(Number);
+            onChange(new Date(year, month - 1, day, 12));
+        },
+        style: {
+            height: 50,
+            boxSizing: "border-box",
+            border: `1.5px solid ${COLORS.border}`,
+            borderRadius: RADIUS.sm,
+            padding: "0 14px",
+            fontSize: 16,
+            color: COLORS.ink,
+            fontFamily: "inherit",
+            accentColor: COLORS.orange,
+            backgroundColor: COLORS.white,
+        },
+    });
 }
-
-const styles = StyleSheet.create({
-    input: {
-        minHeight: 50,
-        borderWidth: 1.5,
-        borderColor: COLORS.border,
-        borderRadius: RADIUS.sm,
-        backgroundColor: COLORS.white,
-        paddingHorizontal: 14,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-    },
-    text: { fontSize: 16, color: COLORS.ink },
-    iosPicker: { alignSelf: "flex-start" },
-});

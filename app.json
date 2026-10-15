@@ -3,22 +3,7 @@
     "name": "Orçamentos",
     "slug": "BudgetApp",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./src/assets/images/icon.png",
     "scheme": "budgetapp",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
-        "backgroundColor": "#181818"
-      },
-      "edgeToEdgeEnabled": true,
-      "package": "com.budgetapp.oficina"
-    },
     "web": {
       "bundler": "metro",
       "output": "single",
@@ -30,16 +15,7 @@
       "backgroundColor": "#181818"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./src/assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#181818"
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true

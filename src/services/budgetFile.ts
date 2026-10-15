@@ -1,40 +1,60 @@
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
 import { buildBudgetPdf, getBudgetFileName } from "./budgetPdf";
 import type { Budget } from "./budgetService";
 
-/** No celular o menu de compartilhar já oferece "Salvar em arquivos", então não há botão de download. */
-export const CAN_DOWNLOAD = false;
-
 export type FileResult = "done" | "downloaded";
 
-/** Gera o arquivo PDF no aparelho e devolve o caminho. */
-export const saveBudgetPdf = async (budget: Budget): Promise<string> => {
-    const dataUri = buildBudgetPdf(budget).output("datauristring");
-    const fileUri = `${FileSystem.cacheDirectory}${getBudgetFileName(budget)}`;
-    await FileSystem.writeAsStringAsync(fileUri, dataUri.split(",")[1], {
-        encoding: FileSystem.EncodingType.Base64,
-    });
-    return fileUri;
+const toFile = (budget: Budget): File =>
+    new File([buildBudgetPdf(budget).output("blob")], getBudgetFileName(budget), { type: "application/pdf" });
+
+const triggerDownload = (file: File) => {
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = file.name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-/** Abre o menu do sistema com o PDF anexado (WhatsApp, e-mail, Drive, salvar...). */
-export const shareBudgetPdf = async (budget: Budget): Promise<FileResult> => {
-    if (!(await Sharing.isAvailableAsync())) {
-        throw new Error("Compartilhamento não disponível neste aparelho.");
+/**
+ * Abre o PDF numa nova aba para visualizar.
+ * Se o navegador bloquear a aba, o PDF é baixado.
+ */
+export const viewBudgetPdf = async (budget: Budget): Promise<FileResult> => {
+    const file = toFile(budget);
+    const url = URL.createObjectURL(file);
+    const opened = window.open(url, "_blank");
+    if (!opened) {
+        URL.revokeObjectURL(url);
+        triggerDownload(file);
+        return "downloaded";
     }
-    const fileUri = await saveBudgetPdf(budget);
-    await Sharing.shareAsync(fileUri, {
-        mimeType: "application/pdf",
-        UTI: "com.adobe.pdf",
-        dialogTitle: "Enviar orçamento",
-    });
+    // A aba precisa do endereço enquanto carrega o PDF; libera a memória depois de um tempo.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
     return "done";
 };
 
-/** No celular, o menu do sistema mostra a prévia do PDF (iOS) ou oferece abrir num leitor de PDF (Android). */
-export const viewBudgetPdf = shareBudgetPdf;
+export const downloadBudgetPdf = async (budget: Budget): Promise<void> => {
+    triggerDownload(toFile(budget));
+};
 
-export const downloadBudgetPdf = async (_budget: Budget): Promise<void> => {
-    throw new Error("Use o botão Compartilhar para salvar o PDF.");
+/**
+ * Compartilha o arquivo PDF pelo menu do sistema (Web Share API).
+ * Navegadores sem suporte a compartilhar arquivos recebem o download do PDF.
+ * O PDF é gerado de forma síncrona para manter o "clique" do usuário válido para o navigator.share.
+ */
+export const shareBudgetPdf = async (budget: Budget): Promise<FileResult> => {
+    const file = toFile(budget);
+
+    if (navigator.canShare?.({ files: [file] })) {
+        try {
+            await navigator.share({ files: [file], title: "Orçamento", text: `Orçamento - ${budget.client.name}` });
+            return "done";
+        } catch (error: any) {
+            if (error?.name === "AbortError") return "done";
+            // NotAllowedError etc.: cai para o download.
+        }
+    }
+
+    triggerDownload(file);
+    return "downloaded";
 };

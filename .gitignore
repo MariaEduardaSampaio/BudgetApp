@@ -37,3 +37,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# PDFs (orçamentos baixados e materiais pessoais)
+*.pdf
