@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start --web",
-    "reset-project": "node ./scripts/reset-project.js",
     "lint": "expo lint",
-    "build:web": "expo export --platform web",
-    "test": "jest"
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "build:web": "expo export --platform web"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.1.0",
@@ -51,5 +51,8 @@
     "transformIgnorePatterns": [
       "/node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|native-base|react-native-svg|jspdf|jspdf-autotable|fflate|fast-png|iobuffer|pako)"
     ]
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

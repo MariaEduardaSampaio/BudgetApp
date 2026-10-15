@@ -1,5 +1,7 @@
 # Orçamentos — site de orçamentos para oficina mecânica
 
+[![CI](https://github.com/MariaEduardaSampaio/BudgetApp/actions/workflows/ci.yml/badge.svg)](https://github.com/MariaEduardaSampaio/BudgetApp/actions/workflows/ci.yml)
+
 Site (instalável no celular) para criar orçamentos de oficina de forma simples, pensado para quem tem pouca familiaridade com computador. Nasceu para dar autonomia ao meu pai, que dependia de outras pessoas para montar orçamentos no notebook.
 
 ## Funcionalidades
@@ -50,6 +52,14 @@ Testes automatizados (Jest + Testing Library) cobrem as regras de negócio:
 - **Histórico** — salvar, atualizar, buscar e excluir
 
 Os testes rodam com fuso fixo (`America/Sao_Paulo`) para darem o mesmo resultado em qualquer máquina.
+
+## Integração contínua
+
+A cada push ou pull request na `master`, o GitHub Actions (`.github/workflows/ci.yml`) roda tipagem, lint, testes e o build do site. Para rodar o mesmo localmente:
+
+```bash
+npm run typecheck && npm run lint && npm test && npm run build:web
+```
 
 ## Publicação
 
