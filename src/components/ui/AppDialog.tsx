@@ -39,14 +39,14 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(24,24,24,0.55)",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: 16,
     },
     card: {
         width: "100%",
         maxWidth: 420,
         backgroundColor: COLORS.white,
         borderRadius: RADIUS.lg,
-        padding: 24,
+        padding: 20,
         alignItems: "center",
     },
     iconCircle: {

@@ -1,39 +1,59 @@
 import { useState } from "react";
 import { Budget } from "../services/budgetService";
 import { saveBudget } from "../services/budgetStorage";
-import { formatCurrency, formatPhone, formatPlate, parseCurrency, parseQuantity } from "../utils/formatters";
+import { formatCurrency, formatMoney, formatPhone, formatPlate, parseCurrency, parseQuantity } from "../utils/formatters";
 import { getMissingFields } from "../utils/validators";
 
 type ServiceField = "description" | "quantity" | "price";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const emptyService = () => ({ description: "", quantity: "1", price: "" });
 
-export const useBudgetForm = () => {
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+const toServiceFields = (budget?: Budget) =>
+  budget
+    ? budget.services.map((s) => ({
+        description: s.description,
+        quantity: String(s.quantity).replace(".", ","),
+        price: formatMoney(s.price),
+      }))
+    : [emptyService()];
 
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
-  const [licensePlate, setLicensePlate] = useState("");
-  const [color, setColor] = useState("");
-  const [year, setYear] = useState("");
+const toValidityDays = (budget?: Budget): number | null => {
+  if (!budget) return 15;
+  if (!budget.expiresAt) return null;
+  return Math.round((new Date(budget.expiresAt).getTime() - new Date(budget.date).getTime()) / DAY_MS);
+};
 
-  const [services, setServices] = useState([emptyService()]);
+/**
+ * Estado do formulário de orçamento.
+ * Sem `initial`, cria um orçamento novo; com `initial`, edita aquele orçamento (mantendo id e data de criação).
+ */
+export const useBudgetForm = (initial?: Budget) => {
+  const [name, setName] = useState(initial?.client.name ?? "");
+  const [phone, setPhone] = useState(initial?.client.phone ?? "");
+  const [address, setAddress] = useState(initial?.client.address ?? "");
 
-  const [date, setDate] = useState(new Date());
-  const [validityDays, setValidityDays] = useState<number | null>(15);
+  const [brand, setBrand] = useState(initial?.vehicle.brand ?? "");
+  const [model, setModel] = useState(initial?.vehicle.model ?? "");
+  const [licensePlate, setLicensePlate] = useState(formatPlate(initial?.vehicle.licensePlate ?? ""));
+  const [color, setColor] = useState(initial?.vehicle.color ?? "");
+  const [year, setYear] = useState(initial ? String(initial.vehicle.year) : "");
 
-  // Depois da primeira tentativa de gerar, os campos inválidos ficam destacados (e somem conforme são corrigidos).
+  const [services, setServices] = useState(() => toServiceFields(initial));
+
+  const [date, setDate] = useState(() => (initial ? new Date(initial.date) : new Date()));
+  const [validityDays, setValidityDays] = useState<number | null>(() => toValidityDays(initial));
+
+  // Depois da primeira tentativa de salvar, os campos inválidos ficam destacados (e somem conforme são corrigidos).
   const [submitted, setSubmitted] = useState(false);
   const [showMissingDialog, setShowMissingDialog] = useState(false);
-  const [generatedBudget, setGeneratedBudget] = useState<Budget | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const missingFields = getMissingFields(name, phone, brand, model, licensePlate, year, services);
-  const errorKeys = new Set(submitted ? missingFields.map((f) => f.key) : []);
-  const hasError = (key: string) => errorKeys.has(key);
+  const errorFor = (key: string): string | undefined =>
+    submitted ? missingFields.find((f) => f.key === key)?.message : undefined;
 
   const total = services.reduce((sum, s) => sum + parseQuantity(s.quantity) * parseCurrency(s.price), 0);
 
@@ -58,14 +78,15 @@ export const useBudgetForm = () => {
     setDate(new Date());
     setValidityDays(15);
     setSubmitted(false);
-    setGeneratedBudget(null);
   };
 
   const buildBudget = (): Budget => {
-    const expiresAt = validityDays === null ? null : new Date(date.getTime() + validityDays * 24 * 60 * 60 * 1000);
+    const expiresAt = validityDays === null ? null : new Date(date.getTime() + validityDays * DAY_MS);
+    const now = new Date().toISOString();
     return {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      createdAt: new Date().toISOString(),
+      id: initial?.id ?? `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: initial?.createdAt ?? now,
+      updatedAt: initial ? now : undefined,
       client: { name: name.trim(), phone, address: address.trim() },
       vehicle: { brand: brand.trim(), model: model.trim(), licensePlate, color: color.trim(), year: parseInt(year, 10) },
       services: services.map((s) => ({
@@ -78,21 +99,22 @@ export const useBudgetForm = () => {
     };
   };
 
-  /** Valida, salva no histórico e abre o diálogo com as opções de compartilhar/baixar. */
-  const generateBudget = async () => {
+  /** Valida e salva no histórico. Devolve o orçamento salvo, ou null se faltar algo / der erro. */
+  const submit = async (): Promise<Budget | null> => {
     setSubmitted(true);
     if (missingFields.length > 0) {
       setShowMissingDialog(true);
-      return;
+      return null;
     }
 
     setIsSaving(true);
     try {
       const budget = buildBudget();
       await saveBudget(budget);
-      setGeneratedBudget(budget);
+      return budget;
     } catch (error: any) {
       setSaveError(error?.message ?? "Não foi possível salvar o orçamento.");
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -117,7 +139,7 @@ export const useBudgetForm = () => {
     addService,
     removeService,
 
-    hasError,
+    errorFor,
     missingFields,
     showMissingDialog,
     closeMissingDialog: () => setShowMissingDialog(false),
@@ -125,9 +147,9 @@ export const useBudgetForm = () => {
     isSaving,
     saveError,
     clearSaveError: () => setSaveError(null),
-    generatedBudget,
-    closeGeneratedBudget: () => setGeneratedBudget(null),
-    generateBudget,
+    submit,
     resetForm,
   };
 };
+
+export type BudgetForm = ReturnType<typeof useBudgetForm>;

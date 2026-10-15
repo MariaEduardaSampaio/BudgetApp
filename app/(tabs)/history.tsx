@@ -1,21 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useFocusEffect } from "expo-router";
-import BudgetActionsDialog from "../../src/components/BudgetActionsDialog";
-import AppDialog from "../../src/components/ui/AppDialog";
-import Button from "../../src/components/ui/Button";
+import { useFocusEffect, useRouter } from "expo-router";
+import BudgetActions from "../../src/components/BudgetActions";
 import { COLORS, RADIUS } from "../../src/constants/theme";
 import { Budget, getBudgetTotal } from "../../src/services/budgetService";
-import { deleteBudget, listBudgets } from "../../src/services/budgetStorage";
+import { listBudgets } from "../../src/services/budgetStorage";
 import { formatDate, formatMoney } from "../../src/utils/formatters";
 
 export default function HistoryScreen() {
+  const router = useRouter();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState(false);
-  const [selected, setSelected] = useState<Budget | null>(null);
-  const [toDelete, setToDelete] = useState<Budget | null>(null);
 
   const load = useCallback(() => {
     listBudgets()
@@ -23,15 +20,8 @@ export default function HistoryScreen() {
       .catch(() => setLoadError(true));
   }, []);
 
-  // Recarrega sempre que a aba é aberta, para mostrar orçamentos recém-criados.
+  // Recarrega sempre que a aba é aberta, para mostrar orçamentos novos ou editados.
   useFocusEffect(load);
-
-  const confirmDelete = async () => {
-    if (!toDelete) return;
-    await deleteBudget(toDelete.id);
-    setToDelete(null);
-    load();
-  };
 
   const term = search.trim().toLowerCase();
   const filtered = term
@@ -70,46 +60,40 @@ export default function HistoryScreen() {
             </View>
           }
           renderItem={({ item }) => (
-            <Pressable style={({ pressed }) => [styles.card, pressed && { borderColor: COLORS.orange }]} onPress={() => setSelected(item)}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.client} numberOfLines={1}>{item.client.name}</Text>
-                <Text style={styles.total}>{formatMoney(getBudgetTotal(item))}</Text>
-              </View>
-
-              <View style={styles.infoRow}>
-                <Ionicons name="car-sport-outline" size={16} color={COLORS.gray} />
-                <Text style={styles.info} numberOfLines={1}>{item.vehicle.brand} {item.vehicle.model}</Text>
-                <View style={styles.plate}>
-                  <Text style={styles.plateText}>{item.vehicle.licensePlate}</Text>
+            <View style={styles.card}>
+              {/* Tocar nos dados abre o orçamento completo. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir orçamento de ${item.client.name}`}
+                onPress={() => router.push({ pathname: "/budget/[id]", params: { id: item.id } })}
+                style={({ pressed }) => [styles.cardBody, pressed && { backgroundColor: COLORS.light }]}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.client} numberOfLines={1}>{item.client.name}</Text>
+                  <Text style={styles.total}>{formatMoney(getBudgetTotal(item))}</Text>
                 </View>
-              </View>
-              <View style={styles.infoRow}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.gray} />
-                <Text style={styles.info}>{formatDate(item.date)} · {item.services.length} {item.services.length === 1 ? "item" : "itens"}</Text>
-              </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="car-sport-outline" size={16} color={COLORS.gray} />
+                  <Text style={styles.info} numberOfLines={1}>{item.vehicle.brand} {item.vehicle.model}</Text>
+                  <View style={styles.plate}>
+                    <Text style={styles.plateText}>{item.vehicle.licensePlate}</Text>
+                  </View>
+                </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="calendar-outline" size={16} color={COLORS.gray} />
+                  <Text style={[styles.info, { flex: 1 }]}>{formatDate(item.date)} · {item.services.length} {item.services.length === 1 ? "item" : "itens"}</Text>
+                  <Text style={styles.open}>Abrir</Text>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.orange} />
+                </View>
+              </Pressable>
 
               <View style={styles.actions}>
-                <Button title="Compartilhar" icon="share-social" onPress={() => setSelected(item)} style={{ flex: 1 }} />
-                <Button title="Excluir" icon="trash-outline" variant="danger" onPress={() => setToDelete(item)} />
+                <BudgetActions budget={item} />
               </View>
-            </Pressable>
+            </View>
           )}
         />
       </View>
-
-      <BudgetActionsDialog budget={selected} title="Orçamento" onClose={() => setSelected(null)} />
-
-      <AppDialog
-        visible={!!toDelete}
-        icon="trash"
-        iconColor={COLORS.danger}
-        title="Excluir orçamento?"
-        message={toDelete ? `O orçamento de ${toDelete.client.name} (${toDelete.vehicle.licensePlate}) será apagado do histórico.` : ""}
-        onClose={() => setToDelete(null)}
-      >
-        <Button title="Excluir" icon="trash" variant="danger" onPress={confirmDelete} />
-        <Button title="Cancelar" variant="ghost" onPress={() => setToDelete(null)} />
-      </AppDialog>
     </View>
   );
 }
@@ -138,15 +122,17 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.lg,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    padding: 16,
     marginBottom: 12,
+    overflow: "hidden",
   },
+  cardBody: { padding: 16, paddingBottom: 10 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 },
   client: { fontSize: 18, fontWeight: "800", color: COLORS.ink, flexShrink: 1 },
   total: { fontSize: 18, fontWeight: "800", color: COLORS.orange },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   info: { fontSize: 15, color: COLORS.gray, flexShrink: 1 },
+  open: { fontSize: 14, fontWeight: "700", color: COLORS.orange },
   plate: { backgroundColor: COLORS.ink, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 },
   plateText: { color: COLORS.white, fontSize: 12, fontWeight: "700", letterSpacing: 1 },
-  actions: { flexDirection: "row", gap: 10, marginTop: 12 },
+  actions: { paddingHorizontal: 16, paddingBottom: 16 },
 });

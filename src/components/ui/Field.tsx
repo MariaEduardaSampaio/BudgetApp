@@ -5,16 +5,19 @@ import { COLORS, RADIUS } from "../../constants/theme";
 interface Props extends TextInputProps {
     label: string;
     required?: boolean;
-    error?: boolean;
+    /** Mensagem de erro; quando presente, o campo fica vermelho. */
+    error?: string;
+    /** Texto de ajuda exibido embaixo do campo quando não há erro. */
+    hint?: string;
     containerStyle?: StyleProp<ViewStyle>;
 }
 
-export default function Field({ label, required, error, containerStyle, style, onFocus, onBlur, ...inputProps }: Props) {
+export default function Field({ label, required, error, hint, containerStyle, style, onFocus, onBlur, ...inputProps }: Props) {
     const [focused, setFocused] = useState(false);
 
     return (
         <View style={[styles.container, containerStyle]}>
-            <Text style={[styles.label, error && styles.labelError]}>
+            <Text style={[styles.label, !!error && styles.labelError]}>
                 {label}
                 {required && <Text style={styles.required}> *</Text>}
             </Text>
@@ -27,11 +30,11 @@ export default function Field({ label, required, error, containerStyle, style, o
                     styles.input,
                     inputProps.multiline && styles.multiline,
                     focused && styles.inputFocused,
-                    error && styles.inputError,
+                    !!error && styles.inputError,
                     style,
                 ]}
             />
-            {error && <Text style={styles.errorText}>Preencha este campo</Text>}
+            {error ? <Text style={styles.errorText}>{error}</Text> : hint ? <Text style={styles.hint}>{hint}</Text> : null}
         </View>
     );
 }
@@ -55,4 +58,5 @@ const styles = StyleSheet.create({
     inputFocused: { borderColor: COLORS.orange },
     inputError: { borderColor: COLORS.danger, backgroundColor: COLORS.dangerSoft },
     errorText: { color: COLORS.danger, fontSize: 13, marginTop: 4 },
+    hint: { color: COLORS.gray, fontSize: 13, marginTop: 4 },
 });

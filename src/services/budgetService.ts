@@ -21,6 +21,7 @@ export interface Service {
 export interface Budget {
     id: string;
     createdAt: string;
+    updatedAt?: string;
     client: Client;
     vehicle: Vehicle;
     services: Service[];

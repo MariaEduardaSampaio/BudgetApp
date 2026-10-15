@@ -45,7 +45,7 @@ const drawFooter = (doc: jsPDF, budget: Budget, page: number, pages: number) => 
 
     doc.setDrawColor(COLORS.border).setLineWidth(0.3).line(PAGE_MARGIN, y - 5, width - PAGE_MARGIN, y - 5);
     doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(COLORS.gray);
-    doc.text(`Gerado em: ${formatDateTime(budget.createdAt)}`, PAGE_MARGIN, y);
+    doc.text(`Gerado em: ${formatDateTime(budget.updatedAt ?? budget.createdAt)}`, PAGE_MARGIN, y);
     doc.text(`Página ${page} de ${pages}`, width / 2, y, { align: "center" });
     if (budget.expiresAt) {
         doc.text(`Orçamento válido até: ${formatDate(budget.expiresAt)}`, width - PAGE_MARGIN, y, { align: "right" });

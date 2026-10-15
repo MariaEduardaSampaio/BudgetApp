@@ -8,14 +8,14 @@ interface Props {
     onNameChange: (v: string) => void;
     onPhoneChange: (v: string) => void;
     onAddressChange: (v: string) => void;
-    hasError: (key: string) => boolean;
+    errorFor: (key: string) => string | undefined;
 }
 
-export default function ClientForm({ name, phone, address, onNameChange, onPhoneChange, onAddressChange, hasError }: Props) {
+export default function ClientForm({ name, phone, address, onNameChange, onPhoneChange, onAddressChange, errorFor }: Props) {
     return (
         <Section title="Cliente" icon="person-outline">
-            <Field label="Nome" required value={name} onChangeText={onNameChange} error={hasError("name")} placeholder="Nome do cliente" autoCapitalize="words" />
-            <Field label="Telefone" required value={phone} onChangeText={onPhoneChange} error={hasError("phone")} placeholder="(31) 99999-9999" keyboardType="phone-pad" />
+            <Field label="Nome" required value={name} onChangeText={onNameChange} error={errorFor("name")} placeholder="Nome do cliente" autoCapitalize="words" />
+            <Field label="Telefone" required value={phone} onChangeText={onPhoneChange} error={errorFor("phone")} placeholder="(31) 99999-9999" keyboardType="phone-pad" />
             <Field label="Endereço" value={address} onChangeText={onAddressChange} placeholder="Rua, número, bairro" />
         </Section>
     );

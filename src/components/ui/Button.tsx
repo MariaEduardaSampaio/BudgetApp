@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, ViewStyle } from "react-native";
 import { COLORS, RADIUS } from "../../constants/theme";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "dark" | "ghost" | "danger";
 
 interface Props {
     title: string;
@@ -18,6 +18,7 @@ interface Props {
 const VARIANTS: Record<Variant, { bg: string; pressed: string; text: string; border?: string }> = {
     primary: { bg: COLORS.orange, pressed: COLORS.orangePressed, text: COLORS.white },
     secondary: { bg: COLORS.white, pressed: COLORS.light, text: COLORS.ink, border: COLORS.ink },
+    dark: { bg: COLORS.ink, pressed: "#2E2E2E", text: COLORS.white },
     ghost: { bg: "transparent", pressed: COLORS.light, text: COLORS.gray },
     danger: { bg: COLORS.dangerSoft, pressed: "#F9D7D3", text: COLORS.danger },
 };

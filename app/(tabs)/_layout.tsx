@@ -1,5 +1,4 @@
 import { Tabs } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '@/src/constants/theme';
@@ -7,7 +6,6 @@ import { COLORS } from '@/src/constants/theme';
 export default function TabLayout() {
   return (
     <>
-      <StatusBar style="light" />
       <Tabs
         screenOptions={{
           headerShown: true,

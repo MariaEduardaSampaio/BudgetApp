@@ -40,10 +40,22 @@ export const formatPhone = (value: string): string => {
     return numeric.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3').trim();
 };
 
-/** Formata string para placa AAA-9A99 */
+/**
+ * Máscara de placa: aceita só o formato antigo (ABC-1234) ou o Mercosul (ABC1D23).
+ * Caracteres que não cabem na posição (ex.: número nas 3 primeiras) são descartados.
+ */
 export const formatPlate = (value: string): string => {
-    let formatted = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (formatted.length <= 3) return formatted;
-    if (formatted.length <= 4) return formatted.replace(/^([A-Z]{3})([0-9A-Z]{0,1})$/, '$1-$2');
-    return formatted.replace(/^([A-Z]{3})([0-9][A-Z0-9]{1})([0-9]{0,2})$/, '$1-$2$3');
+    const chars = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    let plate = '';
+    for (const char of chars) {
+        const isLetter = /[A-Z]/.test(char);
+        const position = plate.length;
+        // Posições: 0-2 letras, 3 número, 4 número (antiga) ou letra (Mercosul), 5-6 números
+        const fits = position < 3 ? isLetter : position === 4 ? true : !isLetter;
+        if (fits) plate += char;
+        if (plate.length === 7) break;
+    }
+    // O 5º caractere define o formato: número = antiga (com hífen), letra = Mercosul.
+    if (plate.length >= 5 && /\d/.test(plate[4])) return `${plate.slice(0, 3)}-${plate.slice(3)}`;
+    return plate;
 };

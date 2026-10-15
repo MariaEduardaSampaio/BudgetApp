@@ -16,10 +16,10 @@ interface Props {
     onChange: (index: number, field: "description" | "quantity" | "price", value: string) => void;
     onAdd: () => void;
     onRemove: (index: number) => void;
-    hasError: (key: string) => boolean;
+    errorFor: (key: string) => string | undefined;
 }
 
-export default function ServicesList({ services, onChange, onAdd, onRemove, hasError }: Props) {
+export default function ServicesList({ services, onChange, onAdd, onRemove, errorFor }: Props) {
     return (
         <Section title="Serviços e peças" icon="construct-outline">
             {services.map((service, index) => (
@@ -44,7 +44,7 @@ export default function ServicesList({ services, onChange, onAdd, onRemove, hasE
                         multiline
                         value={service.description}
                         onChangeText={(v) => onChange(index, "description", v)}
-                        error={hasError(`service-${index}-description`)}
+                        error={errorFor(`service-${index}-description`)}
                         placeholder="Ex.: Troca de óleo e filtro"
                     />
                     <Row>
@@ -54,7 +54,7 @@ export default function ServicesList({ services, onChange, onAdd, onRemove, hasE
                             required
                             value={service.quantity}
                             onChangeText={(v) => onChange(index, "quantity", v)}
-                            error={hasError(`service-${index}-quantity`)}
+                            error={errorFor(`service-${index}-quantity`)}
                             keyboardType="decimal-pad"
                         />
                         <Field
@@ -63,7 +63,7 @@ export default function ServicesList({ services, onChange, onAdd, onRemove, hasE
                             required
                             value={service.price}
                             onChangeText={(v) => onChange(index, "price", v)}
-                            error={hasError(`service-${index}-price`)}
+                            error={errorFor(`service-${index}-price`)}
                             placeholder="R$ 0,00"
                             keyboardType="numeric"
                         />

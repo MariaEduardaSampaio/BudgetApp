@@ -6,7 +6,7 @@ import type { Budget } from "./budgetService";
 /** No celular o menu de compartilhar já oferece "Salvar em arquivos", então não há botão de download. */
 export const CAN_DOWNLOAD = false;
 
-export type ShareResult = "shared" | "downloaded";
+export type FileResult = "done" | "downloaded";
 
 /** Gera o arquivo PDF no aparelho e devolve o caminho. */
 export const saveBudgetPdf = async (budget: Budget): Promise<string> => {
@@ -19,7 +19,7 @@ export const saveBudgetPdf = async (budget: Budget): Promise<string> => {
 };
 
 /** Abre o menu do sistema com o PDF anexado (WhatsApp, e-mail, Drive, salvar...). */
-export const shareBudgetPdf = async (budget: Budget): Promise<ShareResult> => {
+export const shareBudgetPdf = async (budget: Budget): Promise<FileResult> => {
     if (!(await Sharing.isAvailableAsync())) {
         throw new Error("Compartilhamento não disponível neste aparelho.");
     }
@@ -29,8 +29,11 @@ export const shareBudgetPdf = async (budget: Budget): Promise<ShareResult> => {
         UTI: "com.adobe.pdf",
         dialogTitle: "Enviar orçamento",
     });
-    return "shared";
+    return "done";
 };
+
+/** No celular, o menu do sistema mostra a prévia do PDF (iOS) ou oferece abrir num leitor de PDF (Android). */
+export const viewBudgetPdf = shareBudgetPdf;
 
 export const downloadBudgetPdf = async (_budget: Budget): Promise<void> => {
     throw new Error("Use o botão Compartilhar para salvar o PDF.");
