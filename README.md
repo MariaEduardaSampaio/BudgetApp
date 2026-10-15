@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# Orçamentos — app de orçamentos para oficina mecânica
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App (site + Android) para criar orçamentos de oficina de forma simples, pensado para quem tem pouca familiaridade com computador. Nasceu para dar autonomia ao meu pai, que dependia de outras pessoas para montar orçamentos no notebook.
 
-## Get started
+## Funcionalidades
 
-1. Install dependencies
+- Cadastro do cliente, veículo e serviços/peças, com máscaras de telefone, placa (Mercosul) e valores em R$
+- Total calculado automaticamente
+- Data do orçamento e validade (7, 15, 30 dias ou sem validade)
+- **PDF no padrão da oficina** (cabeçalho, tabela, total e assinatura), gerado no próprio aparelho com jsPDF — sem internet nem servidor
+- Envio do arquivo PDF pelo menu de compartilhamento (WhatsApp, e-mail, Drive...) ou download no navegador
+- **Histórico** dos orçamentos salvos no aparelho, com busca por cliente/placa/modelo, reenvio e exclusão
 
-   ```bash
-   npm install
-   ```
+## Stack
 
-2. Start the app
+Expo (SDK 53) · React Native · TypeScript · expo-router · jsPDF + jspdf-autotable · AsyncStorage
 
-   ```bash
-   npx expo start
-   ```
+## Estrutura
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+app/(tabs)/          telas (Novo orçamento, Histórico)
+src/components/      formulários e componentes de UI (ui/)
+src/hooks/           estado e regras do formulário (useBudgetForm)
+src/services/        PDF (budgetPdf), arquivo/compartilhamento (budgetFile[.web]) e histórico (budgetStorage)
+src/utils/           formatadores e validações
+src/constants/       paleta (theme.ts) e dados da oficina exibidos no PDF (workshop.ts)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Rodando em desenvolvimento
 
-## Learn more
+```bash
+npm install
+npx expo start --web
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+## Site (recomendado para começar)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+O mesmo código roda como site e pode ser "instalado" no celular:
 
-## Join the community
+- **Deploy:** o projeto está pronto para a [Vercel](https://vercel.com) (`vercel.json`). Importe o repositório do GitHub e cada `git push` publica uma nova versão.
+- **Build manual:** `npm run build:web` gera o site estático em `dist/`.
+- **No iPhone:** abra o site no Safari → Compartilhar → *Adicionar à Tela de Início*. No Android (Chrome): menu ⋮ → *Adicionar à tela inicial*.
 
-Join our community of developers creating universal apps.
+> O histórico fica salvo no navegador de cada aparelho. Use sempre pelo ícone da tela de início: no iPhone, sites abertos só pelo Safari podem ter os dados apagados após alguns dias sem uso.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## App Android (opcional)
+
+```bash
+npm install -g eas-cli
+eas login            # conta gratuita em expo.dev
+eas build -p android --profile preview
+```
+
+Ao final, o EAS mostra um link/QR code para baixar o `.apk` direto no celular.

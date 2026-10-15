@@ -1,5 +1,3 @@
-// src/services/budgetService.ts
-
 export interface Client {
     name: string;
     phone: string;
@@ -20,27 +18,15 @@ export interface Service {
     price: number;
 }
 
-export interface BudgetPayload {
+export interface Budget {
+    id: string;
+    createdAt: string;
     client: Client;
     vehicle: Vehicle;
     services: Service[];
-    date: Date;
-    expiresAt?: Date | null;
+    date: string;
+    expiresAt: string | null;
 }
 
-const API_BASE_URL = "http://192.168.0.10:5000"; // Troque pelo IP/URL da sua API
-
-export const generateBudgetPdf = async (payload: BudgetPayload): Promise<Uint8Array> => {
-    const response = await fetch(`${API_BASE_URL}/budget`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Erro ao gerar PDF: ${response.status}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-    return new Uint8Array(buffer);
-};
+export const getBudgetTotal = (budget: Budget): number =>
+    budget.services.reduce((sum, s) => sum + s.quantity * s.price, 0);

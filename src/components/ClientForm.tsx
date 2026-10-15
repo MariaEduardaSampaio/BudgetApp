@@ -1,5 +1,5 @@
-import { View, Text, TextInput, StyleSheet, Dimensions } from "react-native";
-const { width } = Dimensions.get("window");
+import Field from "./ui/Field";
+import Section from "./ui/Section";
 
 interface Props {
     name: string;
@@ -8,25 +8,15 @@ interface Props {
     onNameChange: (v: string) => void;
     onPhoneChange: (v: string) => void;
     onAddressChange: (v: string) => void;
+    hasError: (key: string) => boolean;
 }
 
-export default function ClientForm({ name, phone, address, onNameChange, onPhoneChange, onAddressChange }: Props) {
+export default function ClientForm({ name, phone, address, onNameChange, onPhoneChange, onAddressChange, hasError }: Props) {
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Informações do Cliente</Text>
-            <Text style={styles.label}>Nome *</Text>
-            <TextInput style={styles.input} value={name} onChangeText={onNameChange} />
-            <Text style={styles.label}>Telefone *</Text>
-            <TextInput style={styles.input} value={phone} onChangeText={onPhoneChange} keyboardType="phone-pad" />
-            <Text style={styles.label}>Endereço</Text>
-            <TextInput style={styles.input} value={address} onChangeText={onAddressChange} />
-        </View>
+        <Section title="Cliente" icon="person-outline">
+            <Field label="Nome" required value={name} onChangeText={onNameChange} error={hasError("name")} placeholder="Nome do cliente" autoCapitalize="words" />
+            <Field label="Telefone" required value={phone} onChangeText={onPhoneChange} error={hasError("phone")} placeholder="(31) 99999-9999" keyboardType="phone-pad" />
+            <Field label="Endereço" value={address} onChangeText={onAddressChange} placeholder="Rua, número, bairro" />
+        </Section>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { marginBottom: 20 },
-    title: { fontSize: width * 0.05, fontWeight: "bold", marginBottom: 10 },
-    label: { fontSize: width * 0.04, marginBottom: 5 },
-    input: { borderWidth: 1, borderColor: "#ccc", padding: 10, borderRadius: 5, marginBottom: 10 }
-});

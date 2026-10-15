@@ -1,5 +1,5 @@
-import { View, Text, TextInput, Pressable, StyleSheet, Dimensions } from "react-native";
-const { width } = Dimensions.get("window");
+import Field from "./ui/Field";
+import Section, { Row } from "./ui/Section";
 
 interface Props {
     brand: string;
@@ -12,32 +12,24 @@ interface Props {
     onLicenseChange: (v: string) => void;
     onColorChange: (v: string) => void;
     onYearChange: (v: string) => void;
+    hasError: (key: string) => boolean;
 }
 
 export default function VehicleForm({
     brand, model, licensePlate, color, year,
-    onBrandChange, onModelChange, onLicenseChange, onColorChange, onYearChange
+    onBrandChange, onModelChange, onLicenseChange, onColorChange, onYearChange, hasError
 }: Props) {
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Informações do Veículo</Text>
-            <Text style={styles.label}>Marca *</Text>
-            <TextInput style={styles.input} value={brand} onChangeText={onBrandChange} />
-            <Text style={styles.label}>Modelo *</Text>
-            <TextInput style={styles.input} value={model} onChangeText={onModelChange} />
-            <Text style={styles.label}>Placa *</Text>
-            <TextInput style={styles.input} value={licensePlate} onChangeText={onLicenseChange} />
-            <Text style={styles.label}>Cor</Text>
-            <TextInput style={styles.input} value={color} onChangeText={onColorChange} />
-            <Text style={styles.label}>Ano *</Text>
-            <TextInput style={styles.input} value={year} onChangeText={onYearChange} keyboardType="numeric" />
-        </View>
+        <Section title="Veículo" icon="car-sport-outline">
+            <Row>
+                <Field containerStyle={{ flex: 1 }} label="Marca" required value={brand} onChangeText={onBrandChange} error={hasError("brand")} placeholder="Fiat" />
+                <Field containerStyle={{ flex: 1 }} label="Modelo" required value={model} onChangeText={onModelChange} error={hasError("model")} placeholder="Uno" />
+            </Row>
+            <Row>
+                <Field containerStyle={{ flex: 3 }} label="Placa" required value={licensePlate} onChangeText={onLicenseChange} error={hasError("licensePlate")} placeholder="ABC-1D23" autoCapitalize="characters" />
+                <Field containerStyle={{ flex: 2 }} label="Ano" required value={year} onChangeText={onYearChange} error={hasError("year")} placeholder="2015" keyboardType="numeric" maxLength={4} />
+            </Row>
+            <Field label="Cor" value={color} onChangeText={onColorChange} placeholder="Prata" />
+        </Section>
     );
 }
-
-const styles = StyleSheet.create({
-    container: { marginBottom: 20 },
-    title: { fontSize: width * 0.05, fontWeight: "bold", marginBottom: 10 },
-    label: { fontSize: width * 0.04, marginBottom: 5 },
-    input: { borderWidth: 1, borderColor: "#ccc", padding: 10, borderRadius: 5, marginBottom: 10 }
-});

@@ -1,42 +1,47 @@
 import { Tabs } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/src/constants/Colors';
-import { useColorScheme } from 'react-native';
+import { COLORS } from '@/src/constants/theme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarStyle: Platform.select({
-          ios: { position: 'absolute' },
-          default: {},
-        }),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
-          ),
+    <>
+      <StatusBar style="light" />
+      <Tabs
+        screenOptions={{
+          headerShown: true,
+          headerStyle: { backgroundColor: COLORS.ink },
+          headerTintColor: COLORS.white,
+          headerTitleStyle: { fontWeight: '800', fontSize: 20 },
+          headerTitleAlign: 'left',
+          headerShadowVisible: false,
+          tabBarActiveTintColor: COLORS.orange,
+          tabBarInactiveTintColor: '#A3A3A3',
+          tabBarStyle: { backgroundColor: COLORS.ink, borderTopWidth: 0 },
+          tabBarLabelStyle: { fontWeight: '700' },
+          sceneStyle: { backgroundColor: COLORS.light },
         }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="paper-plane" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Novo orçamento',
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="history"
+          options={{
+            title: 'Histórico',
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+    </>
   );
 }
