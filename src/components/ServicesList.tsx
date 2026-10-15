@@ -1,6 +1,7 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS } from "../constants/theme";
+import { MAX_SERVICES } from "../hooks/useBudgetForm";
 import { formatMoney, parseCurrency, parseQuantity } from "../utils/formatters";
 import Field from "./ui/Field";
 import Section, { Row } from "./ui/Section";
@@ -46,6 +47,7 @@ export default function ServicesList({ services, onChange, onAdd, onRemove, erro
                         onChangeText={(v) => onChange(index, "description", v)}
                         error={errorFor(`service-${index}-description`)}
                         placeholder="Ex.: Troca de óleo e filtro"
+                        maxLength={500}
                     />
                     <Row>
                         <Field
@@ -73,10 +75,14 @@ export default function ServicesList({ services, onChange, onAdd, onRemove, erro
                     </Text>
                 </View>
             ))}
-            <Pressable onPress={onAdd} style={({ pressed }) => [styles.addButton, pressed && { backgroundColor: COLORS.orangeSoft }]}>
-                <Ionicons name="add-circle-outline" size={22} color={COLORS.orange} />
-                <Text style={styles.addButtonText}>Adicionar serviço ou peça</Text>
-            </Pressable>
+            {services.length >= MAX_SERVICES ? (
+                <Text style={styles.limit}>Limite de {MAX_SERVICES} itens por orçamento.</Text>
+            ) : (
+                <Pressable onPress={onAdd} style={({ pressed }) => [styles.addButton, pressed && { backgroundColor: COLORS.orangeSoft }]}>
+                    <Ionicons name="add-circle-outline" size={22} color={COLORS.orange} />
+                    <Text style={styles.addButtonText}>Adicionar serviço ou peça</Text>
+                </Pressable>
+            )}
         </Section>
     );
 }
@@ -108,4 +114,5 @@ const styles = StyleSheet.create({
         marginBottom: 10,
     },
     addButtonText: { color: COLORS.orange, fontWeight: "700", fontSize: 16 },
+    limit: { color: COLORS.gray, fontSize: 14, textAlign: "center", marginBottom: 12 },
 });

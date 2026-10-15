@@ -4,10 +4,15 @@
 // Testa o SQL do Supabase num Postgres de verdade (PGlite roda o Postgres dentro do Node).
 // Simulamos o essencial do Supabase: schema auth, auth.uid() e os papéis anon/authenticated.
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "fs";
+import { readdirSync, readFileSync } from "fs";
 import { join } from "path";
 
-const MIGRATION = readFileSync(join(__dirname, "../migrations/20261015000000_initial_schema.sql"), "utf8");
+// Todas as migrations, na ordem do nome (data), como o Supabase aplica.
+const MIGRATIONS_DIR = join(__dirname, "../migrations");
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith(".sql"))
+    .sort()
+    .map((file) => readFileSync(join(MIGRATIONS_DIR, file), "utf8"));
 
 const SUPABASE_STUBS = `
   create schema auth;
@@ -19,11 +24,11 @@ const SUPABASE_STUBS = `
   create role authenticated nologin;
   grant usage on schema public, auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
-`;
 
-// Mesmos privilégios que o Supabase dá por padrão (quem limita o acesso é a RLS).
-const SUPABASE_GRANTS = `
-  grant select, insert, update, delete on all tables in schema public to anon, authenticated;
+  -- Como o Supabase: toda tabela/função criada no schema public já nasce
+  -- com permissão total para anon e authenticated (quem limita é a RLS e as migrations).
+  alter default privileges in schema public grant all on tables to anon, authenticated;
+  alter default privileges in schema public grant all on functions to anon, authenticated;
 `;
 
 const USERS = {
@@ -72,8 +77,7 @@ const getBudget = async (userId: string, id: string) => {
 beforeAll(async () => {
     db = new PGlite();
     await db.exec(SUPABASE_STUBS);
-    await db.exec(MIGRATION);
-    await db.exec(SUPABASE_GRANTS);
+    for (const migration of MIGRATIONS) await db.exec(migration);
     await db.exec(`
       insert into auth.users (id, email) values
         ('${USERS.pai}', 'pai@teste.com'),
@@ -187,23 +191,97 @@ describe("segurança (RLS)", () => {
         expect(await getBudget(USERS.pai, id)).toBeDefined();
     });
 
-    it("não dá para inserir direto na oficina de outra pessoa", async () => {
-        await expect(
-            as(USERS.semOficina, `insert into public.budgets (workshop_id, number, client_name, client_phone, vehicle_brand, vehicle_model, vehicle_plate, vehicle_year, budget_date)
-                                  values ('10000000-0000-0000-0000-000000000001', 99, 'X', 'X', 'X', 'X', 'ABC1D23', 2010, now())`)
-        ).rejects.toThrow(/row-level security/);
-    });
-
-    it("visitante sem login (anon) não pode chamar save_budget", async () => {
-        await db.exec("set role anon;");
-        await expect(db.query("select public.save_budget($1::jsonb)", [budgetJson()])).rejects.toThrow(/permission denied/);
-        await db.exec("reset role;");
-    });
-
     it("excluir um orçamento apaga os itens junto", async () => {
         const id = await save(USERS.pai);
         await as(USERS.pai, "delete from public.budgets where id = $1", [id]);
 
         expect(await as(USERS.pai, "select * from public.budget_items")).toEqual([]);
+    });
+});
+
+describe("segurança: só se escreve pela save_budget", () => {
+    it("nem membro da oficina consegue inserir orçamento direto na tabela", async () => {
+        await expect(
+            as(USERS.pai, `insert into public.budgets (workshop_id, number, client_name, client_phone, vehicle_brand, vehicle_model, vehicle_plate, vehicle_year, budget_date)
+                           values ('10000000-0000-0000-0000-000000000001', 99, 'X', 'X', 'X', 'X', 'ABC1D23', 2010, now())`)
+        ).rejects.toThrow(/permission denied/);
+    });
+
+    it("não dá para alterar número, oficina ou autor direto na tabela", async () => {
+        const id = await save(USERS.pai);
+
+        await expect(as(USERS.pai, "update public.budgets set number = 999 where id = $1", [id])).rejects.toThrow(/permission denied/);
+        await expect(as(USERS.pai, "update public.budgets set created_by = $2 where id = $1", [id, USERS.irmao])).rejects.toThrow(/permission denied/);
+        expect((await getBudget(USERS.pai, id)).number).toBe(1);
+    });
+
+    it("não dá para inserir, alterar ou apagar itens soltos", async () => {
+        const id = await save(USERS.pai);
+
+        await expect(
+            as(USERS.pai, "insert into public.budget_items (budget_id, position, description, quantity, unit_price) values ($1, 9, 'X', 1, 1)", [id])
+        ).rejects.toThrow(/permission denied/);
+        await expect(as(USERS.pai, "update public.budget_items set unit_price = 0 where budget_id = $1", [id])).rejects.toThrow(/permission denied/);
+        await expect(as(USERS.pai, "delete from public.budget_items where budget_id = $1", [id])).rejects.toThrow(/permission denied/);
+    });
+
+    it("ninguém consegue se adicionar a uma oficina", async () => {
+        await expect(
+            as(USERS.semOficina, "insert into public.workshop_members (workshop_id, user_id) values ('10000000-0000-0000-0000-000000000001', $1)", [USERS.semOficina])
+        ).rejects.toThrow(/permission denied/);
+    });
+
+    it("o autor é sempre quem está logado", async () => {
+        const id = await save(USERS.irmao, { created_by: USERS.pai });
+        expect((await getBudget(USERS.pai, id)).created_by).toBe(USERS.irmao);
+    });
+
+    it("não aceita data de criação no futuro", async () => {
+        const id = await save(USERS.pai, { createdAt: "2099-01-01T00:00:00.000Z" });
+        expect((await getBudget(USERS.pai, id)).created_at.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+    });
+
+    it("exige login mesmo para quem tem o papel authenticated", async () => {
+        await expect(save("")).rejects.toThrow("Faça login para salvar orçamentos.");
+    });
+});
+
+describe("segurança: visitante sem login (anon)", () => {
+    const asAnon = async (sql: string, params: unknown[] = []) => {
+        await db.exec("reset role; set role anon;");
+        try {
+            return (await db.query(sql, params)).rows;
+        } finally {
+            await db.exec("reset role;");
+        }
+    };
+
+    it.each(["budgets", "budget_items", "workshops", "workshop_members"])("não tem acesso à tabela %s", async (table) => {
+        await expect(asAnon(`select * from public.${table}`)).rejects.toThrow(/permission denied/);
+    });
+
+    it("não pode chamar save_budget nem is_workshop_member", async () => {
+        await expect(asAnon("select public.save_budget($1::jsonb)", [budgetJson()])).rejects.toThrow(/permission denied/);
+        await expect(asAnon("select public.is_workshop_member('10000000-0000-0000-0000-000000000001')")).rejects.toThrow(/permission denied/);
+    });
+});
+
+describe("limites de tamanho", () => {
+    it("recusa mais de 100 itens", async () => {
+        const services = Array.from({ length: 101 }, (_, i) => ({ description: `Item ${i}`, quantity: 1, price: 1 }));
+        await expect(save(USERS.pai, { services })).rejects.toThrow("no máximo 100 itens");
+    });
+
+    it("aceita exatamente 100 itens", async () => {
+        const services = Array.from({ length: 100 }, (_, i) => ({ description: `Item ${i}`, quantity: 1, price: 1 }));
+        await expect(save(USERS.pai, { services })).resolves.toEqual(expect.any(String));
+    });
+
+    it.each([
+        ["nome do cliente", { client: { name: "x".repeat(121), phone: "(31) 98765-4321" } }],
+        ["descrição do item", { services: [{ description: "x".repeat(501), quantity: 1, price: 1 }] }],
+        ["modelo do veículo", { vehicle: { brand: "Fiat", model: "x".repeat(61), licensePlate: "ABC1D23", year: 2010 } }],
+    ])("recusa %s grande demais", async (_case, overrides) => {
+        await expect(save(USERS.pai, overrides)).rejects.toThrow(/check constraint/);
     });
 });

@@ -11,6 +11,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const emptyService = () => ({ description: "", quantity: "1", price: "" });
 
+/** Mesmo limite da função save_budget no banco. */
+export const MAX_SERVICES = 100;
+
 const toServiceFields = (budget?: Budget) =>
   budget
     ? budget.services.map((s) => ({
@@ -65,7 +68,7 @@ export const useBudgetForm = (initial?: Budget) => {
   };
 
   const addService = () => {
-    setServices((prev) => [...prev, emptyService()]);
+    setServices((prev) => (prev.length >= MAX_SERVICES ? prev : [...prev, emptyService()]));
   };
 
   const removeService = (index: number) => {

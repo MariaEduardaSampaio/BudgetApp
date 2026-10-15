@@ -1,5 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useCallback, useState } from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import BudgetActions from "../../src/components/BudgetActions";
@@ -11,27 +11,63 @@ import { importLegacyBudgets, readLegacyBudgets } from "../../src/services/legac
 import { friendlyError } from "../../src/utils/errors";
 import { formatBudgetNumber, formatDate, formatMoney } from "../../src/utils/formatters";
 
+/** Espera a pessoa parar de digitar antes de buscar no banco. */
+const SEARCH_DELAY_MS = 350;
+
 export default function HistoryScreen() {
   const router = useRouter();
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [legacyCount, setLegacyCount] = useState(0);
   const [importing, setImporting] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    listBudgets()
-      .then((list) => { setBudgets(list); setLoadError(null); })
-      .catch((e) => setLoadError(friendlyError(e, "Não foi possível carregar os orçamentos.")))
-      .finally(() => setLoading(false));
-    readLegacyBudgets().then((list) => setLegacyCount(list.length));
-  }, []);
+  // Cada carregamento ganha um número; respostas de buscas antigas que chegarem atrasadas são ignoradas.
+  const requestId = useRef(0);
 
-  // Recarrega sempre que a aba é aberta, para mostrar orçamentos novos ou editados.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  /** Carrega a primeira página (mais recentes) para a busca atual. */
+  const load = useCallback(() => {
+    const current = ++requestId.current;
+    listBudgets({ search: debouncedSearch })
+      .then((page) => {
+        if (current !== requestId.current) return;
+        setBudgets(page.budgets);
+        setHasMore(page.hasMore);
+        setLoadError(null);
+      })
+      .catch((e) => current === requestId.current && setLoadError(friendlyError(e, "Não foi possível carregar os orçamentos.")))
+      .finally(() => current === requestId.current && setLoading(false));
+    readLegacyBudgets().then((list) => setLegacyCount(list.length));
+  }, [debouncedSearch]);
+
+  // Recarrega quando a aba é aberta (orçamentos novos ou editados) e quando a busca muda.
   useFocusEffect(load);
+
+  const loadMore = async () => {
+    const current = requestId.current;
+    setLoadingMore(true);
+    try {
+      const page = await listBudgets({ search: debouncedSearch, offset: budgets.length });
+      if (current !== requestId.current) return;
+      setBudgets((prev) => [...prev, ...page.budgets]);
+      setHasMore(page.hasMore);
+    } catch (e) {
+      setLoadError(friendlyError(e, "Não foi possível carregar mais orçamentos."));
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const importLegacy = async () => {
     setImporting(true);
@@ -47,13 +83,11 @@ export default function HistoryScreen() {
     }
   };
 
-  const term = search.trim().toLowerCase();
-  const filtered = term
-    ? budgets.filter((b) =>
-        [b.client.name, b.vehicle.licensePlate, b.vehicle.model, formatBudgetNumber(b.number), String(b.number)]
-          .some((field) => field.toLowerCase().includes(term))
-      )
-    : budgets;
+  const searching = debouncedSearch.trim().length > 0;
+
+  const footer = hasMore ? (
+    <Button title="Carregar mais" icon="chevron-down" variant="secondary" loading={loadingMore} onPress={loadMore} style={styles.loadMore} />
+  ) : null;
 
   const header = (
     <>
@@ -91,18 +125,19 @@ export default function HistoryScreen() {
           <ActivityIndicator color={COLORS.orange} size="large" style={{ marginTop: 60 }} />
         ) : (
           <FlatList
-            data={loadError ? [] : filtered}
+            data={loadError ? [] : budgets}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 20 }}
             ListHeaderComponent={header}
+            ListFooterComponent={footer}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Ionicons name={loadError ? "cloud-offline-outline" : "document-text-outline"} size={48} color={COLORS.gray} />
                 <Text style={styles.emptyTitle}>
-                  {loadError ? "Não foi possível carregar" : budgets.length === 0 ? "Nenhum orçamento ainda" : "Nada encontrado"}
+                  {loadError ? "Não foi possível carregar" : searching ? "Nada encontrado" : "Nenhum orçamento ainda"}
                 </Text>
                 <Text style={styles.emptyText}>
-                  {loadError ?? (budgets.length === 0 ? "Os orçamentos gerados aparecem aqui." : "Tente buscar por outro nome, placa ou número.")}
+                  {loadError ?? (searching ? "Tente buscar por outro nome, placa ou número." : "Os orçamentos gerados aparecem aqui.")}
                 </Text>
                 {loadError && <Button title="Tentar de novo" icon="refresh" variant="secondary" onPress={load} style={{ marginTop: 12 }} />}
               </View>
@@ -198,4 +233,5 @@ const styles = StyleSheet.create({
   plate: { backgroundColor: COLORS.ink, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 4 },
   plateText: { color: COLORS.white, fontSize: 12, fontWeight: "700", letterSpacing: 1 },
   actions: { paddingHorizontal: 16, paddingBottom: 16 },
+  loadMore: { marginBottom: 12 },
 });

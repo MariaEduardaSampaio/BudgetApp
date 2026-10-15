@@ -26,14 +26,14 @@ export default function VehicleForm({
     return (
         <Section title="Veículo" icon="car-sport-outline">
             <Row>
-                <Field containerStyle={{ flex: 1 }} label="Marca" required value={brand} onChangeText={onBrandChange} error={errorFor("brand")} placeholder="Fiat" />
-                <Field containerStyle={{ flex: 1 }} label="Modelo" required value={model} onChangeText={onModelChange} error={errorFor("model")} placeholder="Uno" />
+                <Field containerStyle={{ flex: 1 }} label="Marca" required value={brand} onChangeText={onBrandChange} error={errorFor("brand")} placeholder="Fiat" maxLength={60} />
+                <Field containerStyle={{ flex: 1 }} label="Modelo" required value={model} onChangeText={onModelChange} error={errorFor("model")} placeholder="Uno" maxLength={60} />
             </Row>
             <Row>
                 <Field containerStyle={{ flex: 3 }} label="Placa" required value={licensePlate} onChangeText={onLicenseChange} error={errorFor("licensePlate")} hint={plateHint} placeholder="ABC1D23" autoCapitalize="characters" autoCorrect={false} maxLength={8} />
                 <Field containerStyle={{ flex: 2 }} label="Ano" required value={year} onChangeText={onYearChange} error={errorFor("year")} placeholder="2015" keyboardType="numeric" maxLength={4} />
             </Row>
-            <Field label="Cor" value={color} onChangeText={onColorChange} placeholder="Prata" />
+            <Field label="Cor" value={color} onChangeText={onColorChange} placeholder="Prata" maxLength={40} />
         </Section>
     );
 }

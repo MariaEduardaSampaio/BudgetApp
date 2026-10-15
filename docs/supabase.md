@@ -16,31 +16,34 @@ Passo a passo para colocar o banco de dados e o login no ar. Leva uns 20 minutos
 
 ## 2. Criar as tabelas
 
-1. Menu lateral → **SQL Editor** → **New query**.
-2. Cole **todo** o conteúdo de [`supabase/migrations/20261015000000_initial_schema.sql`](../supabase/migrations/20261015000000_initial_schema.sql) e clique em **Run**.
-   Deve aparecer *Success. No rows returned*.
-3. Numa nova query, crie a oficina:
+Rode **cada arquivo** de [`supabase/migrations/`](../supabase/migrations/), **na ordem do nome** (são datas):
 
-   ```sql
-   insert into public.workshops (name) values ('Oficina Alocar');
-   ```
+1. [`20261015000000_initial_schema.sql`](../supabase/migrations/20261015000000_initial_schema.sql) — tabelas, numeração e RLS
+2. [`20261016000000_security_hardening.sql`](../supabase/migrations/20261016000000_security_hardening.sql) — permissões mínimas e limites de tamanho
 
-## 3. Desligar o cadastro público
+Para cada um: menu lateral → **SQL Editor** → **New query** → cole **todo** o conteúdo → **Run**. Deve aparecer *Success. No rows returned*.
 
-Só quem você cadastrar pode entrar.
+> **Projeto já configurado antes?** Rode só os arquivos que ainda não rodou. Sempre que surgir um arquivo novo nessa pasta, ele precisa ser rodado no SQL Editor (os testes do repositório garantem que eles funcionam em sequência).
 
-**Authentication** → **Sign In / Providers** → em *User Signups*, **desative "Allow new users to sign up"** → **Save**.
+## 3. Segurança do login
+
+**Authentication** → **Sign In / Providers**:
+
+- Em *User Signups*, **desative "Allow new users to sign up"** — só quem você cadastrar pode entrar.
+- Em **Email**, defina **Minimum password length** como **8** (o mesmo mínimo que o site pede).
+
+**Save**.
 
 ## 4. Criar os usuários
 
-**Authentication** → **Users** → **Add user** → **Create new user**, para cada pessoa (seu pai, seu irmão e você, para testar):
+**Authentication** → **Users** → **Add user** → **Create new user**, para cada pessoa que vai usar (hoje, seu pai; dá para adicionar outras depois):
 
 - **Email** e **Password** da pessoa (senha com pelo menos 8 caracteres)
 - Marque **Auto Confirm User**
 
 ## 5. Vincular os usuários à oficina
 
-No **SQL Editor**, troque os e-mails e rode. O script cria a oficina se ela ainda não existir e **mostra no resultado cada vínculo criado**:
+No **SQL Editor**, troque o(s) e-mail(s) e rode. O script cria a oficina se ela ainda não existir e **mostra no resultado cada vínculo criado**:
 
 ```sql
 insert into public.workshops (name)
@@ -51,7 +54,7 @@ insert into public.workshop_members (workshop_id, user_id)
 select w.id, u.id
   from public.workshops w
   join auth.users u
-    on lower(u.email) in ('email-do-pai@gmail.com', 'email-do-irmao@gmail.com', 'seu-email@gmail.com')
+    on lower(u.email) in ('email-do-pai@gmail.com')  -- para mais pessoas: ('a@gmail.com', 'b@gmail.com')
  where w.name = 'Oficina Alocar'
 on conflict do nothing
 returning user_id;
@@ -94,16 +97,19 @@ Depois rode `npx expo start --web --clear` (o `--clear` é necessário sempre qu
 
 ### Na Vercel
 
+> As variáveis vão **na Vercel**, que é quem gera o site. *Secrets* do GitHub não servem: eles só existem dentro do GitHub Actions.
+
 Projeto → **Settings** → **Environment Variables** → adicione as duas variáveis (mesmos nomes e valores), marcando **Production**, **Preview** e **Development**.
 
-Depois: **Deployments** → no último deploy, **⋯** → **Redeploy**. (As variáveis só entram num build novo.)
+Depois: **Deployments** → no último deploy, **⋯** → **Redeploy**, **desmarcando "Use existing Build Cache"**. (As variáveis só entram num build novo, e o cache pode reaproveitar o build antigo sem elas.)
+
+Se o site mostrar **"Configuração incompleta"**, as variáveis não entraram no build: confira os nomes e faça o redeploy sem cache.
 
 ## 8. Testar
 
 1. Abra o site → deve aparecer a tela de **login**.
 2. Entre com o seu usuário → crie um orçamento → ele recebe o **Nº 0001**.
-3. Entre com outro usuário (ex.: aba anônima) → o orçamento aparece para ele também.
-4. Se o celular já tinha orçamentos salvos da versão antiga, o **Histórico** mostra o botão **"Enviar para a nuvem"**.
+3. Se o aparelho já tinha orçamentos salvos da versão antiga, o **Histórico** mostra o botão **"Enviar para a nuvem"**.
 
 ## 9. E-mail de "Esqueci minha senha"
 

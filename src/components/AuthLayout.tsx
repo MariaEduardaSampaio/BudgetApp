@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS } from "../constants/theme";
@@ -47,10 +47,10 @@ export function AuthMessage({ type, children }: { type: "error" | "success"; chi
 }
 
 /** Link de texto (ex.: "Esqueci minha senha"). */
-export function AuthLink({ title, onPress, light }: { title: string; onPress: () => void; light?: boolean }) {
+export function AuthLink({ title, onPress }: { title: string; onPress: () => void }) {
     return (
         <Pressable onPress={onPress} hitSlop={8} accessibilityRole="link" style={styles.link}>
-            <Text style={[styles.linkText, light && { color: "#D4D4D4" }]}>{title}</Text>
+            <Text style={styles.linkText}>{title}</Text>
         </Pressable>
     );
 }
