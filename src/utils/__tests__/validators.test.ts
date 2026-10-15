@@ -1,4 +1,4 @@
-import { getMissingFields, getPlateType, ServiceItem } from "../validators";
+import { getMissingFields, getPasswordErrors, getPlateType, ServiceItem } from "../validators";
 
 const validService: ServiceItem = { description: "Troca de óleo", quantity: "1", price: "R$ 180,00" };
 
@@ -107,5 +107,23 @@ describe("getPlateType", () => {
         expect(getPlateType("")).toBeNull();
         expect(getPlateType("ABC1234")).toBeNull(); // antiga sem hífen não é o formato salvo
         expect(getPlateType("ABC-1D23")).toBeNull();
+    });
+});
+
+describe("getPasswordErrors", () => {
+    it("aceita senha com 8+ caracteres repetida corretamente", () => {
+        expect(getPasswordErrors("senhaforte", "senhaforte")).toEqual({});
+    });
+
+    it("pede os dois campos", () => {
+        expect(getPasswordErrors("", "")).toEqual({ password: "Preencha este campo", confirmation: "Preencha este campo" });
+    });
+
+    it("exige pelo menos 8 caracteres", () => {
+        expect(getPasswordErrors("1234567", "1234567").password).toBe("Use pelo menos 8 caracteres");
+    });
+
+    it("avisa quando a confirmação é diferente", () => {
+        expect(getPasswordErrors("senhaforte", "senhafraca")).toEqual({ confirmation: "As senhas não são iguais" });
     });
 });

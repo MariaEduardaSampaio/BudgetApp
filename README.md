@@ -13,7 +13,7 @@ Site (instalável no celular) para criar orçamentos de oficina de forma simples
 - Visualizar, baixar ou compartilhar o PDF (WhatsApp, e-mail, Drive...)
 - **Histórico na nuvem** (Supabase), compartilhado entre quem trabalha na oficina, com busca por cliente/placa/número; cada orçamento pode ser aberto, editado e excluído
 - **Numeração sequencial** (Nº 0001, 0002...) gerada pelo banco, sem repetir mesmo com duas pessoas salvando ao mesmo tempo
-- **Login com e-mail e senha**; cadastro fechado (só entra quem for convidado)
+- **Login com e-mail e senha**, "Esqueci minha senha" por e-mail e troca de senha; cadastro fechado (só entra quem for convidado)
 
 ## Stack
 
@@ -36,7 +36,7 @@ Como configurar: **[docs/supabase.md](docs/supabase.md)**.
 ```
 app/(tabs)/          telas principais (Novo orçamento, Histórico)
 app/budget/[id].tsx  visualização e edição de um orçamento
-app/login.tsx        login
+app/login.tsx        login (+ forgot-password e reset-password)
 src/components/      formulários e componentes de UI (ui/)
 src/hooks/           formulário (useBudgetForm) e login (useAuth)
 src/services/        Supabase (supabase, budgetStorage, budgetMapper), PDF (budgetPdf),

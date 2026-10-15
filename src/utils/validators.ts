@@ -24,6 +24,24 @@ export const getPlateType = (plate: string): PlateType | null =>
 
 const EMPTY = "Preencha este campo";
 
+export const MIN_PASSWORD_LENGTH = 8;
+
+export interface PasswordErrors {
+    password?: string;
+    confirmation?: string;
+}
+
+/** Valida a nova senha e a confirmação. Objeto vazio = tudo certo. */
+export const getPasswordErrors = (password: string, confirmation: string): PasswordErrors => {
+    const errors: PasswordErrors = {};
+    if (!password) errors.password = EMPTY;
+    else if (password.length < MIN_PASSWORD_LENGTH) errors.password = `Use pelo menos ${MIN_PASSWORD_LENGTH} caracteres`;
+
+    if (!confirmation) errors.confirmation = EMPTY;
+    else if (password && confirmation !== password) errors.confirmation = "As senhas não são iguais";
+    return errors;
+};
+
 /** Retorna os campos faltando ou inválidos (lista vazia quando está tudo certo). */
 export const getMissingFields = (
     name: string,

@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import LogoutButton from '@/src/components/LogoutButton';
+import AccountButton from '@/src/components/AccountButton';
 import { COLORS } from '@/src/constants/theme';
 
 export default function TabLayout() {
@@ -15,7 +15,7 @@ export default function TabLayout() {
           headerTitleStyle: { fontWeight: '800', fontSize: 20 },
           headerTitleAlign: 'left',
           headerShadowVisible: false,
-          headerRight: () => <LogoutButton />,
+          headerRight: () => <AccountButton />,
           tabBarActiveTintColor: COLORS.orange,
           tabBarInactiveTintColor: '#A3A3A3',
           tabBarStyle: { backgroundColor: COLORS.ink, borderTopWidth: 0 },

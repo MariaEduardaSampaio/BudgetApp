@@ -16,7 +16,7 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, recovering } = useAuth();
 
   if (loading) {
     return (
@@ -28,7 +28,8 @@ function RootNavigator() {
 
   const loggedIn = !!session;
 
-  // Rotas protegidas: sem login só a tela de login existe; com login, só o app.
+  // Rotas protegidas: sem login só existem as telas de login/senha; com login, o app.
+  // Quem entrou pelo link de "esqueci minha senha" (recovering) só vê a tela de criar a senha nova.
   return (
     <Stack
       screenOptions={{
@@ -40,12 +41,16 @@ function RootNavigator() {
         contentStyle: { backgroundColor: COLORS.light },
       }}
     >
-      <Stack.Protected guard={loggedIn}>
+      <Stack.Protected guard={loggedIn && !recovering}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="budget/[id]" options={{ title: 'Orçamento' }} />
       </Stack.Protected>
+      <Stack.Protected guard={loggedIn}>
+        <Stack.Screen name="reset-password" options={{ headerShown: false, title: 'Nova senha' }} />
+      </Stack.Protected>
       <Stack.Protected guard={!loggedIn}>
         <Stack.Screen name="login" options={{ headerShown: false, title: 'Entrar' }} />
+        <Stack.Screen name="forgot-password" options={{ headerShown: false, title: 'Esqueci minha senha' }} />
       </Stack.Protected>
     </Stack>
   );
