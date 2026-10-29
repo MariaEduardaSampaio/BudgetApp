@@ -25,7 +25,7 @@ interface StoredRow extends BudgetRow {
     created_by: FakeUser;
 }
 
-type Result = { data: any; error: { message: string; code?: string } | null };
+type Result = { data: any; error: { message: string; code?: string } | null; count?: number | null };
 type AuthListener = (event: string, session: ReturnType<typeof sessionOf>) => void;
 
 // Mesma regra da coluna vehicle_plate no banco.
@@ -91,8 +91,9 @@ class BudgetQuery implements PromiseLike<Result> {
     private bounds: [number, number] | null = null;
     private single = false;
     private deleting = false;
+    private counting = false;
 
-    select(_columns?: string) { return this; }
+    select(_columns?: string, { count }: { count?: "exact" } = {}) { this.counting = count === "exact"; return this; }
     order(_column: "number", { ascending = true } = {}) { this.ascending = ascending; return this; }
     range(from: number, to: number) { this.bounds = [from, to]; return this; }
     limit(count: number) { this.bounds = [0, count - 1]; return this; }
@@ -121,9 +122,16 @@ class BudgetQuery implements PromiseLike<Result> {
             return { data: null, error: null };
         }
         if (this.ascending !== null) rows = [...rows].sort((a, b) => (this.ascending ? a.number - b.number : b.number - a.number));
-        if (this.bounds) rows = rows.slice(this.bounds[0], this.bounds[1] + 1);
+        const count = this.counting ? rows.length : null;
+        if (this.bounds) {
+            // Como o PostgREST: pedir a partir de uma linha que não existe é erro 416, não lista vazia.
+            if (this.bounds[0] > 0 && this.bounds[0] >= rows.length) {
+                return { data: null, error: { message: "Requested range not satisfiable", code: "PGRST103" }, count: null };
+            }
+            rows = rows.slice(this.bounds[0], this.bounds[1] + 1);
+        }
         if (this.single) return { data: rows[0] ? toApiRow(rows[0]) : null, error: null };
-        return { data: rows.map(toApiRow), error: null };
+        return { data: rows.map(toApiRow), error: null, count };
     }
 }
 

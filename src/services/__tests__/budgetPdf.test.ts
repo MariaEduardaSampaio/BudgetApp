@@ -37,6 +37,13 @@ describe("buildBudgetPdf", () => {
         expect(buildBudgetPdf(makeBudget()).getNumberOfPages()).toBe(1);
     });
 
+    it("não tem campo de assinatura (ninguém assina o PDF)", () => {
+        const text = buildBudgetPdf(makeBudget()).output();
+        expect(text).toContain("VALOR TOTAL DO SERVI");
+        expect(text).not.toContain("Assinatura");
+        expect(text).not.toContain("Alocar - Oficina de Funilaria e Mec");
+    });
+
     it("quebra em várias páginas e numera todas quando há muitos itens", () => {
         const doc = buildBudgetPdf(makeBudget({ services: manyServices(60) }));
         const pages = doc.getNumberOfPages();

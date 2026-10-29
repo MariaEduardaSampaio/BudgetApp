@@ -16,38 +16,54 @@ const BUDGET_WITH_ITEMS = `
 `;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const PAGE_SIZE = 30;
+/** Opções de "orçamentos por página" no Histórico. */
+export const PAGE_SIZES = [1, 5, 10, 20] as const;
+export const DEFAULT_PAGE_SIZE = 10;
 
 interface BudgetPage {
     budgets: Budget[];
-    hasMore: boolean;
+    /** Quantos orçamentos existem no total (com a busca aplicada). */
+    total: number;
+    /** A página devolvida: pode ser menor que a pedida, se a pedida deixou de existir. */
+    page: number;
 }
 
-/**
- * Uma página do Histórico, do mais recente (maior número) para o mais antigo.
- * A busca (nome, modelo, placa ou número) acontece no banco.
- *
- * `before`: número do último orçamento já mostrado; a página seguinte começa logo abaixo dele.
- * Assim, se alguém criar ou excluir um orçamento enquanto a lista está aberta, nada se repete nem
- * é pulado (o que aconteceria com "pule os N primeiros"), e o banco vai direto pelo índice.
- */
-export const listBudgets = async ({ search = "", before }: { search?: string; before?: number } = {}): Promise<BudgetPage> => {
-    // Pede um a mais só para saber se existe uma próxima página.
+/** Linhas de `from` a `to` (contando do 0), do mais recente (maior número) para o mais antigo, com o total. */
+const queryRange = (search: string, from: number, to: number) => {
     let query = supabase
         .from("budgets")
-        .select(BUDGET_WITH_ITEMS)
+        .select(BUDGET_WITH_ITEMS, { count: "exact" })
         .order("number", { ascending: false })
-        .limit(PAGE_SIZE + 1);
-
-    if (before !== undefined) query = query.lt("number", before);
+        .range(from, to);
     const filter = buildBudgetSearchFilter(search);
     if (filter) query = query.or(filter);
+    return query;
+};
 
-    const { data, error } = await query;
+/**
+ * Uma página do Histórico (a 1 é a dos mais recentes) e o total de orçamentos.
+ * A busca (nome, modelo, placa ou número) acontece no banco.
+ */
+export const listBudgets = async ({
+    search = "",
+    page = 1,
+    pageSize = DEFAULT_PAGE_SIZE,
+}: { search?: string; page?: number; pageSize?: number } = {}): Promise<BudgetPage> => {
+    const from = (page - 1) * pageSize;
+    const { data, count, error } = await queryRange(search, from, from + pageSize - 1);
+
+    // A página deixou de existir (ex.: excluíram o único orçamento dela): o banco responde PGRST103.
+    // Descobre o total e volta para a última página que existe.
+    if (error?.code === "PGRST103" && page > 1) {
+        const { count: total, error: countError } = await queryRange(search, 0, 0);
+        if (countError) throw countError;
+        const lastPage = Math.max(1, Math.ceil((total ?? 0) / pageSize));
+        // Sempre uma página antes da pedida, para não ficar tentando para sempre se alguém criar orçamentos no meio.
+        return listBudgets({ search, pageSize, page: Math.min(lastPage, page - 1) });
+    }
     if (error) throw error;
 
-    const rows = data as unknown as BudgetRow[];
-    return { budgets: rows.slice(0, PAGE_SIZE).map(rowToBudget), hasMore: rows.length > PAGE_SIZE };
+    return { budgets: (data as unknown as BudgetRow[]).map(rowToBudget), total: count ?? 0, page };
 };
 
 export const getBudget = async (id: string): Promise<Budget | null> => {

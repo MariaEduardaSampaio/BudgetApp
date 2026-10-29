@@ -117,6 +117,28 @@ describe("Supabase falso", () => {
         expect((data as any[]).map((r) => r.number)).toEqual([4, 3]);
     });
 
+    it("count exact devolve o total de linhas visíveis (com filtro), não só as da página", async () => {
+        await fakeDb.seed("pai", Array.from({ length: 5 }, () => draft()));
+        await fakeDb.seed("outraOficina", [draft()]);
+        fakeDb.loginAs("pai");
+        const { data, count } = await supabase.from("budgets").select("*", { count: "exact" }).order("number", { ascending: false }).range(0, 1);
+        expect((data as any[]).map((r) => r.number)).toEqual([5, 4]);
+        expect(count).toBe(5);
+        expect((await supabase.from("budgets").select("*").range(0, 1)).count).toBeNull();
+    });
+
+    it("range que começa depois da última linha dá o erro PGRST103, como o PostgREST", async () => {
+        await fakeDb.seed("pai", Array.from({ length: 3 }, () => draft()));
+        fakeDb.loginAs("pai");
+        const { data, error } = await supabase.from("budgets").select("*", { count: "exact" }).range(3, 4);
+        expect(data).toBeNull();
+        expect(error).toEqual(expect.objectContaining({ code: "PGRST103" }));
+        // Começar do 0 numa tabela vazia não é erro.
+        fakeDb.reset();
+        fakeDb.loginAs("pai");
+        expect((await supabase.from("budgets").select("*", { count: "exact" }).range(0, 4)).error).toBeNull();
+    });
+
     it("eq + maybeSingle devolve um orçamento ou null", async () => {
         const [id] = await fakeDb.seed("pai", [draft()]);
         fakeDb.loginAs("pai");

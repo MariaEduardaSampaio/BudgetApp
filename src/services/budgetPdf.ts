@@ -147,8 +147,8 @@ export const buildBudgetPdf = (budget: Budget): jsPDF => {
 
     y = (doc as any).lastAutoTable.finalY + 8;
 
-    // Total + assinatura precisam de ~50mm; se não couber, vão para a próxima página.
-    if (y + 50 > pageHeight - FOOTER_SPACE) {
+    // A caixa do total precisa de ~15mm; se não couber, vai para a próxima página.
+    if (y + 15 > pageHeight - FOOTER_SPACE) {
         doc.addPage();
         y = CONTENT_TOP + 4;
     }
@@ -158,14 +158,6 @@ export const buildBudgetPdf = (budget: Budget): jsPDF => {
     const boxWidth = doc.getTextWidth(totalText) + 12;
     doc.setFillColor(COLORS.orange).roundedRect(width - PAGE_MARGIN - boxWidth, y, boxWidth, 11, 1.5, 1.5, "F");
     doc.setTextColor(COLORS.white).text(totalText, width - PAGE_MARGIN - 6, y + 7.4, { align: "right" });
-
-    y += 32;
-    const signatureWidth = 90;
-    doc.setDrawColor(COLORS.ink).setLineWidth(0.3).line((width - signatureWidth) / 2, y, (width + signatureWidth) / 2, y);
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(COLORS.ink);
-    doc.text(WORKSHOP.signature, width / 2, y + 5, { align: "center" });
-    doc.setFont("helvetica", "italic").setTextColor(COLORS.gray);
-    doc.text("Assinatura", width / 2, y + 10, { align: "center" });
 
     const pages = doc.getNumberOfPages();
     for (let page = 1; page <= pages; page++) {

@@ -30,7 +30,21 @@ const range = (from: number, to: number) => Array.from({ length: from - to + 1 }
 const expectNumbers = (expected: number[]) => waitFor(() => expect(shownNumbers()).toEqual(expected), { timeout: 3000 });
 
 const search = (text: string) => fireEvent.change(screen.getByPlaceholderText("Buscar por cliente, placa ou número"), { target: { value: text } });
-const loadMore = () => fireEvent.click(screen.getByText("Carregar mais"));
+// Os botões de página aparecem em cima e embaixo da lista; por padrão usa os de baixo.
+const pagerButtons = (title: string) => screen.getAllByText(title).map((text) => text.closest<HTMLElement>("[role=button]")!);
+const press = (title: string, where: "top" | "bottom" = "bottom") => {
+    const [top, bottom] = pagerButtons(title);
+    fireEvent.click(where === "top" ? top : bottom);
+};
+const choosePageSize = (size: number) => fireEvent.click(screen.getByRole("radio", { name: String(size) }));
+/** Desativado nos dois lugares (em cima e embaixo). */
+const isDisabled = (title: string) => {
+    const states = pagerButtons(title).map((button) => button.getAttribute("aria-disabled") === "true");
+    expect(states).toHaveLength(2);
+    return states.every(Boolean);
+};
+/** "Página X de Y" aparece em cima e embaixo da lista. */
+const expectPageInfo = (text: string) => expect(screen.getAllByText(text)).toHaveLength(2);
 const wait = (ms: number) => act(() => new Promise((resolve) => setTimeout(resolve, ms)));
 
 const openHistory = async () => {
@@ -44,43 +58,111 @@ beforeEach(() => {
 });
 
 describe("histórico: paginação", () => {
-    it("30 orçamentos: mostra todos e não tem Carregar mais", async () => {
-        await seedMany(30);
+    it("começa com 10 por página e mostra o total, a faixa e o número de páginas", async () => {
+        await seedMany(41);
         await openHistory();
-        await expectNumbers(range(30, 1));
-        expect(screen.queryByText("Carregar mais")).toBeNull();
+        await expectNumbers(range(41, 32));
+
+        expect(screen.getByRole("radio", { name: "10" }).getAttribute("aria-checked")).toBe("true");
+        expect(screen.getByText("Mostrando 1–10 de 41 orçamentos")).toBeTruthy();
+        expectPageInfo("Página 1 de 5");
     });
 
-    it("31 orçamentos: Carregar mais traz o mais antigo", async () => {
-        await seedMany(31);
+    it("Próxima e Anterior trocam de página; nas pontas o botão fica desativado", async () => {
+        await seedMany(41);
         await openHistory();
-        await expectNumbers(range(31, 2));
+        await expectNumbers(range(41, 32));
+        expect(isDisabled("Anterior")).toBe(true);
 
-        loadMore();
-        await expectNumbers(range(31, 1));
-        expect(screen.queryByText("Carregar mais")).toBeNull();
+        press("Próxima");
+        await expectNumbers(range(31, 22));
+        expect(screen.getByText("Mostrando 11–20 de 41 orçamentos")).toBeTruthy();
+        expectPageInfo("Página 2 de 5");
+
+        press("Próxima");
+        press("Próxima");
+        press("Próxima");
+        await expectNumbers([1]);
+        expect(screen.getByText("Mostrando 41 de 41 orçamentos")).toBeTruthy();
+        expect(isDisabled("Próxima")).toBe(true);
+
+        press("Anterior");
+        await expectNumbers(range(11, 2));
+        expectPageInfo("Página 4 de 5");
     });
 
-    it("orçamento criado por outra pessoa enquanto a lista está aberta não duplica nada ao carregar mais", async () => {
-        await seedMany(31);
+    it("os botões de cima também trocam de página", async () => {
+        await seedMany(41);
         await openHistory();
-        await expectNumbers(range(31, 2));
+        await expectNumbers(range(41, 32));
 
-        await fakeDb.seed("irmao", [draft("Novo do irmão")]); // vira o Nº 32
-        loadMore();
-        await expectNumbers(range(31, 1));
+        press("Próxima", "top");
+        await expectNumbers(range(31, 22));
+        expectPageInfo("Página 2 de 5");
+
+        press("Anterior", "top");
+        await expectNumbers(range(41, 32));
+        expectPageInfo("Página 1 de 5");
     });
 
-    it("61 orçamentos: três páginas sem repetir nem pular, do mais novo ao mais antigo", async () => {
-        await seedMany(61);
+    it.each([
+        [1, [41], "Página 1 de 41"],
+        [5, range(41, 37), "Página 1 de 9"],
+        [20, range(41, 22), "Página 1 de 3"],
+    ])("escolher %i por página mostra essa quantidade", async (size, numbers, pages) => {
+        await seedMany(41);
         await openHistory();
-        await expectNumbers(range(61, 32));
+        await expectNumbers(range(41, 32));
 
-        loadMore();
-        await expectNumbers(range(61, 2));
-        loadMore();
-        await expectNumbers(range(61, 1));
-        expect(screen.queryByText("Carregar mais")).toBeNull();
+        choosePageSize(size);
+        await expectNumbers(numbers);
+        expectPageInfo(pages);
+        expect(screen.getByRole("radio", { name: String(size) }).getAttribute("aria-checked")).toBe("true");
+    });
+
+    it("trocar a quantidade por página volta para a página 1", async () => {
+        await seedMany(41);
+        await openHistory();
+        await expectNumbers(range(41, 32));
+        press("Próxima");
+        await expectNumbers(range(31, 22));
+
+        choosePageSize(5);
+        await expectNumbers(range(41, 37));
+        expectPageInfo("Página 1 de 9");
+    });
+
+    it("com uma página só, não mostra os botões de página", async () => {
+        await seedMany(7);
+        await openHistory();
+        await expectNumbers(range(7, 1));
+        expect(screen.getByText("Mostrando 1–7 de 7 orçamentos")).toBeTruthy();
+        expect(screen.queryByText("Próxima")).toBeNull();
+    });
+
+    it("um orçamento só: texto no singular", async () => {
+        await seedMany(1);
+        await openHistory();
+        await expectNumbers([1]);
+        expect(screen.getByText("Mostrando 1 de 1 orçamento")).toBeTruthy();
+    });
+
+    it("sem orçamentos: não mostra contagem nem seletor de página", async () => {
+        await openHistory();
+        expect(await screen.findByText("Nenhum orçamento ainda")).toBeTruthy();
+        expect(screen.queryByText(/^Mostrando/)).toBeNull();
+        expect(screen.queryByRole("radio")).toBeNull();
+    });
+
+    it("orçamento criado por outra pessoa aparece no total ao trocar de página", async () => {
+        await seedMany(41);
+        await openHistory();
+        await expectNumbers(range(41, 32));
+
+        await fakeDb.seed("irmao", [draft("Novo do irmão")]); // vira o Nº 42
+        press("Próxima");
+        await expectNumbers(range(32, 23));
+        expect(screen.getByText("Mostrando 11–20 de 42 orçamentos")).toBeTruthy();
     });
 });
 
@@ -152,15 +234,31 @@ describe("histórico: busca", () => {
 });
 
 describe("histórico: busca com paginação", () => {
-    it("busca com mais de 30 resultados pagina só dentro dos resultados", async () => {
-        await seedMany(40, (i) => (i < 35 ? draft(`Gol ${i + 1}`, "Gol") : draft(`Uno ${i + 1}`, "Uno")));
+    it("a busca conta e pagina só dentro dos resultados", async () => {
+        await seedMany(40, (i) => (i < 15 ? draft(`Gol ${i + 1}`, "Gol") : draft(`Uno ${i + 1}`, "Uno")));
         await openHistory();
-        await expectNumbers(range(40, 11));
+        await expectNumbers(range(40, 31));
 
         search("gol");
-        await expectNumbers(range(35, 6));
-        loadMore();
-        await expectNumbers(range(35, 1));
-        expect(screen.queryByText("Carregar mais")).toBeNull();
+        await expectNumbers(range(15, 6));
+        expect(screen.getByText("Mostrando 1–10 de 15 orçamentos")).toBeTruthy();
+        expectPageInfo("Página 1 de 2");
+
+        press("Próxima");
+        await expectNumbers(range(5, 1));
+        expect(isDisabled("Próxima")).toBe(true);
+    });
+
+    it("buscar volta para a página 1", async () => {
+        await seedMany(40, (i) => (i < 15 ? draft(`Gol ${i + 1}`, "Gol") : draft(`Uno ${i + 1}`, "Uno")));
+        await openHistory();
+        await expectNumbers(range(40, 31));
+        press("Próxima");
+        press("Próxima");
+        await expectNumbers(range(20, 11));
+
+        search("gol");
+        await expectNumbers(range(15, 6));
+        expectPageInfo("Página 1 de 2");
     });
 });

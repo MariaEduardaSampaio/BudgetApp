@@ -1,7 +1,7 @@
 import { fakeDb } from "../../test-utils/fakeSupabase";
 import { makeBudget } from "../../test-utils/budgetFactory";
 import type { BudgetDraft } from "../budgetService";
-import { deleteBudget, getBudget, listBudgets, PAGE_SIZE, saveBudget } from "../budgetStorage";
+import { DEFAULT_PAGE_SIZE, deleteBudget, getBudget, listBudgets, saveBudget } from "../budgetStorage";
 
 // O Supabase é o falso em memória (mesmas regras do banco), nunca o de verdade.
 jest.mock("../supabase", () => jest.requireActual("../../test-utils/fakeSupabase").fakeSupabaseModule);
@@ -25,47 +25,51 @@ describe("listBudgets", () => {
         expect(budgets.map((b) => b.number)).toEqual([3, 2, 1]);
     });
 
-    it(`com ${PAGE_SIZE} orçamentos, traz todos e hasMore é false`, async () => {
-        await seedMany(PAGE_SIZE);
+    it(`sem tamanho de página, traz ${DEFAULT_PAGE_SIZE} e o total de orçamentos`, async () => {
+        await seedMany(DEFAULT_PAGE_SIZE + 2);
         const page = await listBudgets();
-        expect(page.budgets).toHaveLength(PAGE_SIZE);
-        expect(page.hasMore).toBe(false);
+        expect(page.budgets.map((b) => b.number)).toEqual(Array.from({ length: DEFAULT_PAGE_SIZE }, (_, i) => DEFAULT_PAGE_SIZE + 2 - i));
+        expect(page.total).toBe(DEFAULT_PAGE_SIZE + 2);
+        expect(page.page).toBe(1);
     });
 
-    it(`com ${PAGE_SIZE + 1}, a primeira página traz ${PAGE_SIZE} e hasMore true; a segunda traz o mais antigo`, async () => {
-        await seedMany(PAGE_SIZE + 1);
-
-        const first = await listBudgets();
-        expect(first.budgets).toHaveLength(PAGE_SIZE);
-        expect(first.budgets[0].number).toBe(PAGE_SIZE + 1);
-        expect(first.hasMore).toBe(true);
-
-        const second = await listBudgets({ before: first.budgets.at(-1)!.number });
-        expect(second.budgets.map((b) => b.number)).toEqual([1]);
-        expect(second.hasMore).toBe(false);
+    it("traz a página pedida, com o tamanho escolhido", async () => {
+        await seedMany(12);
+        expect((await listBudgets({ page: 1, pageSize: 5 })).budgets.map((b) => b.number)).toEqual([12, 11, 10, 9, 8]);
+        expect((await listBudgets({ page: 2, pageSize: 5 })).budgets.map((b) => b.number)).toEqual([7, 6, 5, 4, 3]);
+        const last = await listBudgets({ page: 3, pageSize: 5 });
+        expect(last.budgets.map((b) => b.number)).toEqual([2, 1]);
+        expect(last.total).toBe(12);
     });
 
-    it("a página seguinte não repete nem pula quando alguém cria ou exclui um orçamento no meio", async () => {
-        const ids = await seedMany(PAGE_SIZE + 2); // Nº 1 a 32
-        const first = await listBudgets();
-        expect(first.budgets.at(-1)!.number).toBe(3);
-
-        // Enquanto o pai olha a primeira página, o irmão cria um e exclui outro já mostrado.
-        await fakeDb.seed("irmao", [draft()]);
-        await deleteBudget(ids[31]);
-
-        const second = await listBudgets({ before: first.budgets.at(-1)!.number });
-        expect(second.budgets.map((b) => b.number)).toEqual([2, 1]);
+    it("sem orçamentos: lista vazia, total 0, página 1", async () => {
+        expect(await listBudgets({ page: 1, pageSize: 5 })).toEqual({ budgets: [], total: 0, page: 1 });
     });
 
-    it("a página seguinte respeita a busca", async () => {
-        await fakeDb.seed("pai", Array.from({ length: PAGE_SIZE + 5 }, (_, i) => withModel(i % 2 ? "Uno" : "Gol")));
-        const first = await listBudgets({ search: "gol" });
-        const second = await listBudgets({ search: "gol", before: first.budgets.at(-1)!.number });
+    it("página que deixou de existir (excluíram o último dela) devolve a última página que existe", async () => {
+        const ids = await seedMany(6);
+        await deleteBudget(ids[0]); // sobram 5: cabem numa página só
+        const page = await listBudgets({ page: 2, pageSize: 5 });
+        expect(page.page).toBe(1);
+        expect(page.budgets.map((b) => b.number)).toEqual([6, 5, 4, 3, 2]);
+        expect(page.total).toBe(5);
+    });
+
+    it("página muito além do fim também volta para a última", async () => {
+        await seedMany(7);
+        const page = await listBudgets({ page: 50, pageSize: 5 });
+        expect(page.page).toBe(2);
+        expect(page.budgets.map((b) => b.number)).toEqual([2, 1]);
+    });
+
+    it("a busca vale para o total e para as páginas", async () => {
+        await fakeDb.seed("pai", Array.from({ length: 25 }, (_, i) => withModel(i % 2 ? "Uno" : "Gol"))); // 13 Gol
+        const first = await listBudgets({ search: "gol", page: 1, pageSize: 10 });
+        const second = await listBudgets({ search: "gol", page: 2, pageSize: 10 });
         const all = [...first.budgets, ...second.budgets];
+        expect(first.total).toBe(13);
+        expect(all).toHaveLength(13);
         expect(all.every((b) => b.vehicle.model === "Gol")).toBe(true);
-        expect(all).toHaveLength(18);
-        expect(second.hasMore).toBe(false);
     });
 
     it("aplica a busca no banco", async () => {

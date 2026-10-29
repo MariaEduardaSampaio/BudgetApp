@@ -41,7 +41,7 @@ Como configurar: **[docs/supabase.md](docs/supabase.md)**.
 
 ## Performance
 
-- Histórico carregado em páginas de 30, com busca feita no banco (com espera de digitação)
+- Histórico em páginas numeradas (1, 5, 10 ou 20 por página), com o total de orçamentos e busca feita no banco (com espera de digitação)
 - Só as colunas usadas são buscadas
 - Só a fonte de ícones usada (Ionicons) entra no site
 - Arquivos com hash no nome ficam em cache no navegador por 1 ano

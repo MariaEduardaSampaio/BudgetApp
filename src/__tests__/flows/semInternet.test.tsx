@@ -117,15 +117,19 @@ describe("sem internet", () => {
         await waitFor(() => expect(cards()).toHaveLength(2));
     });
 
-    it("Carregar mais sem internet avisa e mantém os orçamentos já carregados", async () => {
-        await fakeDb.seed("pai", Array.from({ length: 31 }, draft));
+    it("trocar de página sem internet avisa, e Tentar de novo abre a página pedida", async () => {
+        await fakeDb.seed("pai", Array.from({ length: 15 }, draft));
         renderApp("/history");
-        await waitFor(() => expect(cards()).toHaveLength(30));
+        await waitFor(() => expect(cards()).toHaveLength(10));
 
         fakeDb.failNext("network");
-        fireEvent.click(screen.getByText("Carregar mais"));
+        // Os botões de página aparecem em cima e embaixo da lista: usa o de cima.
+        fireEvent.click(screen.getAllByText("Próxima")[0].closest<HTMLElement>("[role=button]")!);
         expect(await screen.findByText(OFFLINE)).toBeTruthy();
-        expect(cards()).toHaveLength(30);
+
+        pressButton("Tentar de novo");
+        await waitFor(() => expect(cards()).toHaveLength(5));
+        expect(screen.getAllByText("Página 2 de 2")).toHaveLength(2);
     });
 
     it("abrir orçamento sem internet mostra o erro e Tentar de novo", async () => {
