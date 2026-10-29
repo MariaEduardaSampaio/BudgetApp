@@ -7,7 +7,6 @@ import Button from "../../src/components/ui/Button";
 import { COLORS, RADIUS } from "../../src/constants/theme";
 import { Budget, getBudgetTotal } from "../../src/services/budgetService";
 import { listBudgets } from "../../src/services/budgetStorage";
-import { importLegacyBudgets, readLegacyBudgets } from "../../src/services/legacyStorage";
 import { friendlyError } from "../../src/utils/errors";
 import { formatBudgetNumber, formatDate, formatMoney } from "../../src/utils/formatters";
 
@@ -21,12 +20,10 @@ export default function HistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Erro ao carregar mais: aparece embaixo da lista, sem esconder os orçamentos que já estão na tela.
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-
-  const [legacyCount, setLegacyCount] = useState(0);
-  const [importing, setImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<string | null>(null);
 
   // Cada carregamento ganha um número; respostas de buscas antigas que chegarem atrasadas são ignoradas.
   const requestId = useRef(0);
@@ -45,10 +42,10 @@ export default function HistoryScreen() {
         setBudgets(page.budgets);
         setHasMore(page.hasMore);
         setLoadError(null);
+        setLoadMoreError(null);
       })
       .catch((e) => current === requestId.current && setLoadError(friendlyError(e, "Não foi possível carregar os orçamentos.")))
       .finally(() => current === requestId.current && setLoading(false));
-    readLegacyBudgets().then((list) => setLegacyCount(list.length));
   }, [debouncedSearch]);
 
   // Recarrega quando a aba é aberta (orçamentos novos ou editados) e quando a busca muda.
@@ -57,55 +54,29 @@ export default function HistoryScreen() {
   const loadMore = async () => {
     const current = requestId.current;
     setLoadingMore(true);
+    setLoadMoreError(null);
     try {
-      const page = await listBudgets({ search: debouncedSearch, offset: budgets.length });
+      const page = await listBudgets({ search: debouncedSearch, before: budgets.at(-1)?.number });
       if (current !== requestId.current) return;
       setBudgets((prev) => [...prev, ...page.budgets]);
       setHasMore(page.hasMore);
     } catch (e) {
-      setLoadError(friendlyError(e, "Não foi possível carregar mais orçamentos."));
+      setLoadMoreError(friendlyError(e, "Não foi possível carregar mais orçamentos."));
     } finally {
       setLoadingMore(false);
     }
   };
 
-  const importLegacy = async () => {
-    setImporting(true);
-    setImportMessage(null);
-    try {
-      const count = await importLegacyBudgets();
-      setImportMessage(`${count} ${count === 1 ? "orçamento enviado" : "orçamentos enviados"} para a nuvem.`);
-    } catch (e) {
-      setImportMessage(friendlyError(e, "A importação parou no meio. Toque de novo para continuar."));
-    } finally {
-      setImporting(false);
-      load();
-    }
-  };
 
   const searching = debouncedSearch.trim().length > 0;
 
   const footer = hasMore ? (
-    <Button title="Carregar mais" icon="chevron-down" variant="secondary" loading={loadingMore} onPress={loadMore} style={styles.loadMore} />
-  ) : null;
-
-  const header = (
     <>
-      {legacyCount > 0 && (
-        <View style={styles.banner}>
-          <View style={styles.bannerTop}>
-            <Ionicons name="cloud-upload-outline" size={22} color={COLORS.orange} />
-            <Text style={styles.bannerText}>
-              {legacyCount === 1 ? "1 orçamento está salvo" : `${legacyCount} orçamentos estão salvos`} só neste aparelho.
-              Envie para a nuvem para não perder e ver em outros aparelhos.
-            </Text>
-          </View>
-          <Button title="Enviar para a nuvem" icon="cloud-upload-outline" loading={importing} onPress={importLegacy} />
-        </View>
-      )}
-      {importMessage && <Text style={styles.importMessage}>{importMessage}</Text>}
+      {loadMoreError && <Text style={styles.loadMoreError}>{loadMoreError}</Text>}
+      <Button title="Carregar mais" icon="chevron-down" variant="secondary" loading={loadingMore} onPress={loadMore} style={styles.loadMore} />
     </>
-  );
+  ) : undefined;
+
 
   return (
     <View style={styles.screen}>
@@ -128,7 +99,6 @@ export default function HistoryScreen() {
             data={loadError ? [] : budgets}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 20 }}
-            ListHeaderComponent={header}
             ListFooterComponent={footer}
             ListEmptyComponent={
               <View style={styles.empty}>
@@ -199,18 +169,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 16, color: COLORS.ink, minHeight: 46 },
-  banner: {
-    backgroundColor: COLORS.orangeSoft,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    borderColor: COLORS.orange,
-    padding: 14,
-    gap: 12,
-    marginBottom: 12,
-  },
-  bannerTop: { flexDirection: "row", gap: 10 },
-  bannerText: { flex: 1, fontSize: 15, color: COLORS.ink, lineHeight: 21 },
-  importMessage: { fontSize: 15, color: COLORS.gray, textAlign: "center", marginBottom: 12 },
   empty: { alignItems: "center", marginTop: 60, gap: 6, paddingHorizontal: 24 },
   emptyTitle: { fontSize: 18, fontWeight: "800", color: COLORS.ink, marginTop: 6 },
   emptyText: { fontSize: 15, color: COLORS.gray, textAlign: "center" },
@@ -234,4 +192,5 @@ const styles = StyleSheet.create({
   plateText: { color: COLORS.white, fontSize: 12, fontWeight: "700", letterSpacing: 1 },
   actions: { paddingHorizontal: 16, paddingBottom: 16 },
   loadMore: { marginBottom: 12 },
+  loadMoreError: { fontSize: 15, color: COLORS.danger, textAlign: "center", marginBottom: 8 },
 });

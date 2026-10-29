@@ -1,10 +1,10 @@
-export interface Client {
+interface Client {
     name: string;
     phone: string;
     address?: string;
 }
 
-export interface Vehicle {
+interface Vehicle {
     brand: string;
     model: string;
     licensePlate: string;
@@ -37,8 +37,6 @@ export interface Budget {
  */
 export type BudgetDraft = Omit<Budget, "id" | "number" | "createdAt" | "updatedAt"> & {
     id?: string;
-    /** Só usado ao importar orçamentos antigos, para manter a data original. */
-    createdAt?: string;
 };
 
 export const getBudgetTotal = (budget: Pick<Budget, "services">): number =>

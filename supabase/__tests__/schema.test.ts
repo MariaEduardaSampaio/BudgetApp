@@ -285,3 +285,93 @@ describe("limites de tamanho", () => {
         await expect(save(USERS.pai, overrides)).rejects.toThrow(/check constraint/);
     });
 });
+
+describe("cenários da oficina compartilhada", () => {
+    const fullBudget = {
+        client: { name: "Joana D'Arc", phone: "(31) 3333-4444", address: "Rua das Flores, 10" },
+        vehicle: { brand: "Volkswagen", model: "Gol", licensePlate: "ABC-1234", color: "Prata", year: 2014 },
+        services: [
+            { description: "Revisão", quantity: 1, price: 450 },
+            { description: "Filtro de ar", quantity: 1.5, price: 35.5 },
+        ],
+    };
+    const items = (userId: string, id: string) =>
+        as(userId, "select description, quantity::float, unit_price::float from public.budget_items where budget_id = $1 order by position", [id]);
+
+    it("irmão lê o orçamento do pai com todos os campos e itens iguais", async () => {
+        const id = await save(USERS.pai, fullBudget);
+
+        expect(await getBudget(USERS.irmao, id)).toEqual(await getBudget(USERS.pai, id));
+        expect(await getBudget(USERS.irmao, id)).toMatchObject({
+            client_name: "Joana D'Arc",
+            client_phone: "(31) 3333-4444",
+            client_address: "Rua das Flores, 10",
+            vehicle_brand: "Volkswagen",
+            vehicle_model: "Gol",
+            vehicle_plate: "ABC-1234",
+            vehicle_color: "Prata",
+            vehicle_year: 2014,
+        });
+        expect(await items(USERS.irmao, id)).toEqual([
+            { description: "Revisão", quantity: 1, unit_price: 450 },
+            { description: "Filtro de ar", quantity: 1.5, unit_price: 35.5 },
+        ]);
+    });
+
+    it("edição do irmão aparece para o pai, com o mesmo número e updated_at", async () => {
+        const id = await save(USERS.pai, fullBudget);
+        await save(USERS.irmao, { ...fullBudget, id, client: { ...fullBudget.client, phone: "(31) 99999-0000" }, services: [{ description: "Só alinhamento", quantity: 1, price: 80 }] });
+
+        const budget = await getBudget(USERS.pai, id);
+        expect(budget).toMatchObject({ number: 1, client_phone: "(31) 99999-0000", created_by: USERS.pai });
+        expect(budget.updated_at).not.toBeNull();
+        expect(await items(USERS.pai, id)).toEqual([{ description: "Só alinhamento", quantity: 1, unit_price: 80 }]);
+    });
+
+    it("exclusão do pai some para o irmão", async () => {
+        const id = await save(USERS.pai);
+        await as(USERS.pai, "delete from public.budgets where id = $1", [id]);
+        expect(await getBudget(USERS.irmao, id)).toBeUndefined();
+    });
+
+    it("salva só com obrigatórios: endereço, cor e validade ficam null", async () => {
+        const id = await save(USERS.pai, {
+            client: { name: "Só obrigatórios", phone: "(31) 98765-4321", address: "" },
+            vehicle: { brand: "Fiat", model: "Uno", licensePlate: "ABC1D23", color: "", year: 2010 },
+            expiresAt: null,
+        });
+        expect(await getBudget(USERS.irmao, id)).toMatchObject({ client_address: null, vehicle_color: null, expires_at: null });
+    });
+
+    it.each(["ABC1D23", "ABC-1234"])("aceita a placa %s", async (licensePlate) => {
+        const id = await save(USERS.pai, { vehicle: { ...fullBudget.vehicle, licensePlate } });
+        expect((await getBudget(USERS.pai, id)).vehicle_plate).toBe(licensePlate);
+    });
+
+    it.each(["abc1d23", "ABC1234", "ABC-1D23", "AB1C234"])("recusa a placa %s (regra do banco, código 23514)", async (licensePlate) => {
+        await expect(save(USERS.pai, { vehicle: { ...fullBudget.vehicle, licensePlate } })).rejects.toMatchObject({ code: "23514" });
+    });
+
+    it("guarda acento e apóstrofo sem alterar", async () => {
+        const id = await save(USERS.pai, { client: { name: "João D'Ávila", phone: "(31) 98765-4321", address: "Praça São José, nº 5" } });
+        expect(await getBudget(USERS.irmao, id)).toMatchObject({ client_name: "João D'Ávila", client_address: "Praça São José, nº 5" });
+    });
+
+    it("orçamento editado pelo irmão continua invisível para outra oficina", async () => {
+        const id = await save(USERS.pai);
+        await save(USERS.irmao, { id, client: { name: "Editado", phone: "(31) 98765-4321" } });
+
+        expect(await getBudget(USERS.outraOficina, id)).toBeUndefined();
+        expect(await as(USERS.outraOficina, "select * from public.budget_items")).toEqual([]);
+    });
+});
+
+describe("desempenho: regras de acesso", () => {
+    it("as políticas de leitura e exclusão não chamam is_workshop_member linha por linha", async () => {
+        const policies = await db.query<{ tablename: string; qual: string }>(
+            "select tablename, qual from pg_policies where schemaname = 'public' and tablename in ('budgets', 'budget_items')",
+        );
+        expect(policies.rows.length).toBeGreaterThanOrEqual(3);
+        for (const { qual } of policies.rows) expect(qual).not.toContain("is_workshop_member");
+    });
+});

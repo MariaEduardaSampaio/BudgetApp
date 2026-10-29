@@ -58,4 +58,19 @@ describe("buildBudgetPdf", () => {
         const edited = makeBudget({ updatedAt: new Date(2026, 9, 20, 9, 15).toISOString() });
         expect(pdfText(edited)).toContain("20/10/2026 09:15");
     });
+
+    it("gera o PDF só com os campos obrigatórios, sem 'undefined' nem 'null' no texto", () => {
+        const base = makeBudget();
+        const text = pdfText(
+            makeBudget({
+                client: { ...base.client, address: "" },
+                vehicle: { ...base.vehicle, color: "" },
+                expiresAt: null,
+            }),
+        );
+        // Só os textos desenhados na página ("(...) Tj"); a estrutura do PDF tem "null" próprio.
+        const shown = [...text.matchAll(/\(((?:\\.|[^\\)])*)\)\s*Tj/g)].map((match) => match[1]).join(" ");
+        expect(shown).toContain("Cliente Teste");
+        expect(shown).not.toMatch(/undefined|null|NaN/);
+    });
 });

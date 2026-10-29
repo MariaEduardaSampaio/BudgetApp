@@ -25,18 +25,27 @@ export default function BudgetScreen() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const fetchBudget = useCallback(
+    () =>
+      getBudget(id)
+        .then(setBudget)
+        .catch((e) => {
+          setLoadError(friendlyError(e, "Não foi possível carregar o orçamento."));
+          setBudget(null);
+        }),
+    [id]
+  );
+
+  useEffect(() => {
+    fetchBudget();
+  }, [fetchBudget]);
+
+  /** "Tentar de novo": volta a mostrar o carregando e busca outra vez. */
+  const retry = () => {
     setLoadError(null);
     setBudget(undefined);
-    getBudget(id)
-      .then(setBudget)
-      .catch((e) => {
-        setLoadError(friendlyError(e, "Não foi possível carregar o orçamento."));
-        setBudget(null);
-      });
-  }, [id]);
-
-  useEffect(load, [load]);
+    fetchBudget();
+  };
 
   // Abrindo o link direto (ex.: recarregando a página) não há tela anterior: volta para o histórico.
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/history"));
@@ -71,7 +80,7 @@ export default function BudgetScreen() {
         <Ionicons name={loadError ? "cloud-offline-outline" : "document-text-outline"} size={48} color={COLORS.gray} />
         <Text style={styles.notFound}>{loadError ? "Não foi possível carregar" : "Orçamento não encontrado"}</Text>
         {loadError && <Text style={styles.notFoundText}>{loadError}</Text>}
-        {loadError && <Button title="Tentar de novo" icon="refresh" onPress={load} />}
+        {loadError && <Button title="Tentar de novo" icon="refresh" onPress={retry} />}
         <Button title="Ir para o histórico" variant={loadError ? "ghost" : "primary"} onPress={() => router.replace("/history")} />
       </View>
     );

@@ -23,12 +23,13 @@ export default function TabLayout() {
           sceneStyle: { backgroundColor: COLORS.light },
         }}
       >
+        {/* A barra de abas sempre passa a cor como texto (o tipo aceita também número). */}
         <Tabs.Screen
           name="index"
           options={{
             title: 'Novo orçamento',
             tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={size} color={color} />
+              <Ionicons name={focused ? 'document-text' : 'document-text-outline'} size={size} color={color as string} />
             ),
           }}
         />
@@ -37,7 +38,7 @@ export default function TabLayout() {
           options={{
             title: 'Histórico',
             tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color} />
+              <Ionicons name={focused ? 'time' : 'time-outline'} size={size} color={color as string} />
             ),
           }}
         />

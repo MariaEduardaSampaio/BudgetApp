@@ -12,10 +12,7 @@ const validForm = {
     services: [validService],
 };
 
-const check = (overrides: Partial<typeof validForm> = {}) => {
-    const f = { ...validForm, ...overrides };
-    return getMissingFields(f.name, f.phone, f.brand, f.model, f.licensePlate, f.year, f.services);
-};
+const check = (overrides: Partial<typeof validForm> = {}) => getMissingFields({ ...validForm, ...overrides });
 
 const messageFor = (overrides: Partial<typeof validForm>, key: string) =>
     check(overrides).find((field) => field.key === key)?.message;

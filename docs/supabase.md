@@ -20,6 +20,7 @@ Rode **cada arquivo** de [`supabase/migrations/`](../supabase/migrations/), **na
 
 1. [`20261015000000_initial_schema.sql`](../supabase/migrations/20261015000000_initial_schema.sql) — tabelas, numeração e RLS
 2. [`20261016000000_security_hardening.sql`](../supabase/migrations/20261016000000_security_hardening.sql) — permissões mínimas e limites de tamanho
+3. [`20261027000000_rls_performance.sql`](../supabase/migrations/20261027000000_rls_performance.sql) — regras de acesso mais rápidas (mesmas permissões)
 
 Para cada um: menu lateral → **SQL Editor** → **New query** → cole **todo** o conteúdo → **Run**. Deve aparecer *Success. No rows returned*.
 
@@ -109,7 +110,6 @@ Se o site mostrar **"Configuração incompleta"**, as variáveis não entraram n
 
 1. Abra o site → deve aparecer a tela de **login**.
 2. Entre com o seu usuário → crie um orçamento → ele recebe o **Nº 0001**.
-3. Se o aparelho já tinha orçamentos salvos da versão antiga, o **Histórico** mostra o botão **"Enviar para a nuvem"**.
 
 ## 9. E-mail de "Esqueci minha senha"
 

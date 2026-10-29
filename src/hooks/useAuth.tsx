@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { initialAuthRedirect, passwordResetRedirectUrl, supabase } from "../services/supabase";
+import { clearUnsavedBudget } from "./useBudgetForm";
 
 interface AuthContextValue {
     session: Session | null;
@@ -50,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const signOut = async () => {
         const { error } = await supabase.auth.signOut();
         if (error) throw error;
+        // Saiu de propósito: o orçamento pela metade não fica para o próximo login neste aparelho.
+        clearUnsavedBudget();
     };
 
     const requestPasswordReset = async (email: string) => {

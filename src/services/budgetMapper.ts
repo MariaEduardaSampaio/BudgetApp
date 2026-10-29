@@ -1,7 +1,7 @@
 import type { Budget } from "./budgetService";
 
 /** Linha da tabela budget_items, como vem do Supabase. */
-export interface BudgetItemRow {
+interface BudgetItemRow {
     position: number;
     description: string;
     quantity: number | string;

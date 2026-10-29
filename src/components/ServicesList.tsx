@@ -3,17 +3,12 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { COLORS, RADIUS } from "../constants/theme";
 import { MAX_SERVICES } from "../hooks/useBudgetForm";
 import { formatMoney, parseCurrency, parseQuantity } from "../utils/formatters";
+import type { ServiceItem } from "../utils/validators";
 import Field from "./ui/Field";
 import Section, { Row } from "./ui/Section";
 
-interface Service {
-    description: string;
-    quantity: string;
-    price: string;
-}
-
 interface Props {
-    services: Service[];
+    services: ServiceItem[];
     onChange: (index: number, field: "description" | "quantity" | "price", value: string) => void;
     onAdd: () => void;
     onRemove: (index: number) => void;

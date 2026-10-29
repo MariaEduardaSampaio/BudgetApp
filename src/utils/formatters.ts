@@ -10,6 +10,16 @@ export const formatCurrency = (value: string): string => {
 export const parseCurrency = (value: string): number =>
     parseFloat(value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
 
+/**
+ * Quantidade enquanto é digitada: só números e uma vírgula, com no máximo 2 casas decimais
+ * (o banco guarda numeric(10,2); com mais casas o total salvo ficaria diferente do mostrado).
+ */
+export const formatQuantity = (value: string): string => {
+    const [whole, ...decimals] = value.replace(/\./g, ',').replace(/[^\d,]/g, '').split(',');
+    if (decimals.length === 0) return whole;
+    return `${whole || '0'},${decimals.join('').slice(0, 2)}`;
+};
+
 /** Converte quantidade digitada ("1,5" ou "2") para número */
 export const parseQuantity = (value: string): number =>
     parseFloat(value.replace(',', '.')) || 0;

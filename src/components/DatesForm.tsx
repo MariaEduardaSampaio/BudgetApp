@@ -33,7 +33,7 @@ export default function DatesForm({ date, validityDays, onDateChange, onValidity
                         <Pressable
                             key={option.label}
                             accessibilityRole="radio"
-                            accessibilityState={{ selected }}
+                            aria-checked={selected}
                             style={[styles.chip, selected && styles.chipSelected]}
                             onPress={() => onValidityChange(option.days)}
                         >

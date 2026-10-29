@@ -5,6 +5,7 @@ import {
     formatMoney,
     formatPhone,
     formatPlate,
+    formatQuantity,
     parseCurrency,
     parseQuantity,
 } from "../formatters";
@@ -35,6 +36,21 @@ describe("parseCurrency", () => {
 
     it("devolve 0 para texto vazio", () => {
         expect(parseCurrency("")).toBe(0);
+    });
+});
+
+describe("formatQuantity", () => {
+    it.each([
+        ["2", "2"],
+        ["1,5", "1,5"],
+        ["1.5", "1,5"],
+        ["1,333", "1,33"],
+        ["1,2,3", "1,23"],
+        ["abc1x,5", "1,5"],
+        [",5", "0,5"],
+        ["", ""],
+    ])("%p vira %p (no máximo 2 casas, como o banco guarda)", (typed, expected) => {
+        expect(formatQuantity(typed)).toBe(expected);
     });
 });
 

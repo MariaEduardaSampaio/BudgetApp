@@ -2,6 +2,8 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // O TypeScript 6 não inclui mais os tipos globais sozinho: Jest (testes) e Node (process.env).
+    "types": ["jest", "node"],
     "paths": {
       "@/*": [
         "./*"

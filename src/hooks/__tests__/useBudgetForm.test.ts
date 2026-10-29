@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { Budget, BudgetDraft } from "../../services/budgetService";
 import { saveBudget } from "../../services/budgetStorage";
 import { makeBudget } from "../../test-utils/budgetFactory";
-import { useBudgetForm } from "../useBudgetForm";
+import { clearUnsavedBudget, useBudgetForm } from "../useBudgetForm";
 
 // O Supabase é simulado: o "banco" devolve o que recebeu, com id e número.
 jest.mock("../../services/budgetStorage", () => ({ saveBudget: jest.fn() }));
@@ -12,6 +12,7 @@ const plain = (text: string) => text.replace(/\s/g, " ");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 beforeEach(() => {
+    clearUnsavedBudget();
     mockedSave.mockReset();
     mockedSave.mockImplementation(async (draft: BudgetDraft): Promise<Budget> => ({
         ...draft,

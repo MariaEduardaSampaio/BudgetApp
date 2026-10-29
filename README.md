@@ -17,7 +17,7 @@ Site (instalável no celular) para criar orçamentos de oficina de forma simples
 
 ## Stack
 
-Expo (SDK 53) / React Native Web · TypeScript · expo-router · Supabase (Postgres + Auth + RLS) · jsPDF + jspdf-autotable · Vercel
+Expo (SDK 58) / React Native Web · TypeScript · expo-router · Supabase (Postgres + Auth + RLS) · jsPDF + jspdf-autotable · Vercel
 
 ## Banco de dados
 
@@ -55,7 +55,7 @@ app/login.tsx        login (+ forgot-password.tsx e reset-password.tsx)
 src/components/      formulários, telas de login e componentes de UI (ui/)
 src/hooks/           formulário (useBudgetForm) e login (useAuth)
 src/services/        Supabase (supabase, budgetStorage, budgetMapper), PDF (budgetPdf),
-                     visualizar/baixar/compartilhar (budgetFile) e importação dos orçamentos antigos (legacyStorage)
+                     e visualizar/baixar/compartilhar (budgetFile)
 src/utils/           formatadores, validações, busca, link de troca de senha e mensagens de erro
 src/constants/       paleta (theme.ts) e dados da oficina (workshop.ts)
 supabase/            migrations SQL e testes do banco
@@ -103,9 +103,7 @@ npm run typecheck && npm run lint && npm test && npm run build:web
 - **Build manual:** `npm run build:web` gera o site estático em `dist/`.
 - **No celular:** Android (Chrome): menu ⋮ → *Adicionar à tela inicial*. iPhone (Safari): Compartilhar → *Adicionar à Tela de Início*.
 
-> Orçamentos feitos antes do Supabase ficavam só no navegador. Ao abrir o Histórico nesse aparelho, aparece o botão **"Enviar para a nuvem"** para importá-los.
-
 ## Pendências conhecidas
 
-- **Expo SDK 53:** o `npm audit` aponta vulnerabilidades nas ferramentas de build/desenvolvimento do Expo (Metro, CLI, Jest). Elas não vão para o site publicado; a correção é atualizar o Expo SDK, planejada como tarefa separada.
+- **npm audit:** sobram avisos só nas ferramentas de build do Expo (`@expo/cli`, `zod`), que não vão para o site publicado. A "correção" sugerida pelo npm é voltar para um SDK antigo: ignorar até sair uma versão nova do Expo.
 - **Busca sem acento:** "joao" não encontra "João" (a busca diferencia acentos).
